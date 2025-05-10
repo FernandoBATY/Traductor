@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrenar Modelo - Traductor de Señas</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="content-container">
+        <h1>Entrenar Modelo</h1>
+        <p>Aquí puedes entrenar manualmente el modelo.</p>
+        <button onclick="runPythonScript('captura_imagenes.py')">Capturar Imágenes</button>
+        <button onclick="startTraining()">Entrenar Modelo</button>
+        <button class="back" onclick="navigateTo('dashboard.html')">Regresar</button>
+    </div>
+    <script src="js/dashboard.js"></script>
+    <script>
+        function startTraining() {
+            const userId = localStorage.getItem('userId'); // Obtener el ID del usuario
+            if (!userId) {
+                alert('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
+                return;
+            }
+
+            fetch('/run-training', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId }),
+            })
+                .then((response) => response.text())
+                .then((message) => alert(message))
+                .catch((error) => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>

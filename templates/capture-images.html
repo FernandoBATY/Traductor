@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capturar Imágenes - Traductor de Señas</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .video-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+        }
+        .video-container iframe {
+            width: 80%;
+            height: 80%;
+            border: 2px solid #000;
+            border-radius: 10px;
+        }
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .input-container input {
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            width: 50%;
+            text-align: center;
+        }
+        .input-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .input-container button:hover {
+            background-color: #0056b3;
+        }
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .notification {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            animation: fadeOut 3s forwards;
+        }
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+        .train-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .train-button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="content-container">
+        <h1>Capturar Imágenes</h1>
+        <p>Aquí puedes capturar imágenes para entrenar el modelo.</p>
+        <div class="video-container">
+            <!-- Embed the video feed from captura_imagenes.py -->
+            <iframe src="http://localhost:5001/video_feed" frameborder="0" allowfullscreen></iframe>
+        </div>
+        <div class="input-container">
+            <input type="text" id="gestureLetter" placeholder="Ingresa la letra a capturar">
+            <button onclick="captureImage()">Tomar Imagen</button>
+        </div>
+        <button class="back" onclick="navigateTo('dashboard.html')">Regresar</button>
+    </div>
+    <div class="notification-container" id="notificationContainer"></div>
+    <button class="train-button" onclick="trainModel()">Entrenar Modelo</button>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        function showNotification(message) {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+
+            container.appendChild(notification);
+
+            // Remove the notification after 3 seconds
+            setTimeout(() => {
+                container.removeChild(notification);
+            }, 3000);
+        }
+
+        function captureImage() {
+            const letter = document.getElementById('gestureLetter').value.trim();
+            const userId = localStorage.getItem('userId'); // Get the user ID from localStorage
+
+            if (!letter) {
+                showNotification('Por favor, ingresa una letra para capturar.');
+                return;
+            }
+
+            if (!userId) {
+                showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
+                return;
+            }
+
+            fetch(`http://localhost:5001/capture_image?userId=${userId}&letter=${letter}`, {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.text();
+                } else {
+                    throw new Error('Error al capturar la imagen.');
+                }
+            })
+            .then(message => {
+                showNotification(`Imagen para la letra "${letter}" capturada.`);
+            })
+            .catch(error => {
+                console.error('Error al capturar la imagen:', error);
+                showNotification('Ocurrió un error al capturar la imagen.');
+            });
+        }
+
+        function trainModel() {
+            const userId = localStorage.getItem('userId'); // Get the user ID from localStorage
+
+            if (!userId) {
+                showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
+                return;
+            }
+
+            fetch(`http://localhost:5001/train_model?userId=${userId}`)
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    } else {
+                        throw new Error('Error al entrenar el modelo.');
+                    }
+                })
+                .then(message => {
+                    showNotification('Modelo entrenado exitosamente.');
+                })
+                .catch(error => {
+                    console.error('Error al entrenar el modelo:', error);
+                    showNotification('Ocurrió un error al entrenar el modelo.');
+                });
+        }
+    </script>
+</body>
+</html>

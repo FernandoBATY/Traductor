@@ -1,0 +1,28 @@
+iniciar el entorno virtuaul que es el venv en la raiz con 
+
+venv\Scripts\activate
+
+se inicia el proyecto con 
+
+node server.js
+
+
+en my sql en schema crear esta bd :
+
+
+config/db.js  :
+(cambiar la contraseña y el usuario de ser necesario)
+host: 'localhost',
+            user: 'root',
+            password: '21617',
+            database: 'usuarios'
+
+
+
+crearte database usuarios;
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    contraseña VARCHAR(255) NOT NULL
+);

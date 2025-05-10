@@ -1,0 +1,304 @@
+/* Estilos base */
+body {
+    font-family: 'Arial', sans-serif;
+    background: #f6f5f7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+h1 {
+    font-weight: bold;
+    margin: 0;
+}
+
+p {
+    font-size: 14px;
+    font-weight: 100;
+    line-height: 20px;
+    letter-spacing: 0.5px;
+    margin: 20px 0 30px;
+    padding: 0 20px; /* Evita que el texto toque los bordes */
+}
+
+button {
+    border-radius: 20px;
+    border: 1px solid #092B48;
+    background: linear-gradient(to right, #21701b, #242122);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 12px 45px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: transform 80ms ease-in;
+    margin-top: 20px; /* Separación adicional */
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+button:focus {
+    outline: none;
+}
+
+button.ghost {
+    background-color: transparent;
+    border-color: #ffffff;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    border-radius: 5px;
+    border: 2px solid;
+    padding: 10px;
+    width: 80%; /* Ajustar ancho */
+    margin: 10px auto; /* Centrado */
+    transition: border-color 0.3s;
+}
+
+.password-container {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centrado */
+}
+
+.password-container input {
+    flex-grow: 1;
+}
+
+.toggle-password {
+    margin-left: -30px; /* Ajustamos la posición del botón de mostrar contraseña */
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+    outline: none;
+    border-color: rgba(75, 154, 73, 0.8);
+    animation: borderAnimation 2s infinite;
+}
+
+@keyframes borderAnimation {
+    0% {
+        border-color: red;
+    }
+    33% {
+        border-color: yellow;
+    }
+    66% {
+        border-color: green;
+    }
+    100% {
+        border-color: purple;
+    }
+}
+
+/* Estructura del contenedor */
+.container {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+    position: relative;
+    overflow: hidden;
+    width: 1250px; /* Ancho ajustado */
+    max-width: 100%;
+    min-height: 550px; /* Altura mínima ajustada */
+}
+
+.form-container {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    transition: all 0.6s ease-in-out;
+}
+
+.sign-up-container,
+.sign-in-container {
+    left: 0;
+    width: 50%;
+    z-index: 2;
+    padding: 0 10px; /* Espaciado adicional */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.sign-in-container {
+    opacity: 1;
+}
+
+.sign-up-container {
+    opacity: 0;
+}
+
+.overlay-container {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+    transition: transform 0.6s ease-in-out;
+    z-index: 100;
+    min-height: 550px; /* Altura mínima para evitar solapamiento */
+}
+
+.overlay {
+    background: #90BF2A;
+    background: -webkit-linear-gradient(to right, #90BF2A, #21701b);
+    background: linear-gradient(to right, #90BF2A, #21701b);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: 0 0;
+    color: #ffffff;
+    position: relative;
+    left: -100%;
+    height: 100%;
+    width: 200%;
+    transform: translateX(0);
+    transition: transform 0.6s ease-in-out;
+}
+
+.overlay-panel {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 20px 40px; /* Aumentar padding */
+    text-align: center;
+    top: 0;
+    height: 100%;
+    width: 50%;
+    transform: translateX(0);
+    transition: transform 0.6s ease-in-out;
+    box-sizing: border-box; /* Evita que padding desplace contenido */
+}
+
+.overlay-panel h1 {
+    font-size: 2rem; /* Tamaño ajustado */
+    margin-bottom: 15px;
+}
+
+.overlay-panel p {
+    font-size: 1rem; /* Ajuste para textos más pequeños */
+    line-height: 1.5;
+    padding: 0 10px;
+}
+
+.overlay-right {
+    right: 0;
+    transform: translateX(0);
+    height: 100%;
+    width: 50%;
+}
+
+.overlay-left {
+    
+    transform: translateX(-20%);
+    height: 100%;
+    width: 50%;
+}
+
+/* Animaciones */
+.container.right-panel-active .sign-up-container {
+    transform: translateX(100%);
+    opacity: 1;
+    z-index: 5;
+}
+
+.container.right-panel-active .sign-in-container {
+    transform: translateX(100%);
+    opacity: 0;
+    z-index: 1;
+}
+
+.container.right-panel-active .overlay-container {
+    transform: translateX(-100%);
+}
+
+.container.right-panel-active .overlay {
+    transform: translateX(50%);
+}
+
+.container.right-panel-active .overlay-right {
+    transform: translateX(0);
+}
+
+.container.right-panel-active .overlay-left {
+    transform: translateX(20%);
+}
+
+/* Animación de lenguaje de señas */
+.sign-language {
+    margin-top: 20px;
+}
+
+.sign-language img {
+    width: 100px;
+    height: auto;
+    animation: wave 2s infinite;
+}
+
+@keyframes wave {
+    0% { transform: rotate(0); }
+    25% { transform: rotate(10deg); }
+    50% { transform: rotate(0); }
+    75% { transform: rotate(-10deg); }
+    100% { transform: rotate(0); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .overlay-panel {
+        padding: 10px 20px; /* Ajustar padding en móviles */
+    }
+
+    .overlay-panel h1 {
+        font-size: 1.5rem; /* Texto más pequeño */
+    }
+
+    .overlay-panel p {
+        font-size: 0.9rem;
+    }
+
+    .container {
+        width: 100%;
+        min-height: auto; /* Que se adapte al contenido */
+    }
+}
+
+/* Estilos para el dashboard */
+.dashboard-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.options {
+    margin-top: 30px;
+}
+
+.options button {
+    margin: 10px;
+    padding: 15px 30px;
+    font-size: 16px;
+    border: none;
+    border-radius: 10px;
+    background-color: #092B48;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.options button:hover {
+    background-color: #ff7a50;
+}
