@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizar Modelo - Traductor de Señas</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .video-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            position: relative;
+        }
+        .video-container img {
+            width: 80%;
+            height: 80%;
+            border: 2px solid #000;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+        .gesture-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 120px;
+            font-weight: bold;
+            color: #28a745;
+            text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .gesture-display.show {
+            opacity: 1;
+        }
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .notification {
+            background-color: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            animation: fadeOut 3s forwards;
+        }
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="content-container">
+        <h1>Visualizar Modelo</h1>
+        <p>Aquí puedes visualizar el modelo en tiempo real.</p>
+        <div class="video-container">
+            <div id="gestureDisplay" class="gesture-display"></div>
+            <!-- Embed the video feed from reconocimiento.py via Node proxy -->
+            <img id="videoFeed" src="" alt="Model visualization feed">
+        </div>
+        <button class="back" onclick="stopRecognitionAndNavigate()">Regresar</button>
+    </div>
+    <div class="notification-container" id="notificationContainer"></div>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        const userId = new URLSearchParams(window.location.search).get('userId') || localStorage.getItem('userId');
+        let isStreaming = false;
+
+        function showNotification(message) {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+
+            container.appendChild(notification);
+
+            // Remove the notification after 3 seconds
+            setTimeout(() => {
+                container.removeChild(notification);
+            }, 3000);
+        }
+
+        function loadVideoFeed() {
+            if (isStreaming) return;
+            const img = document.getElementById('videoFeed');
+            isStreaming = true;
+            // Pass userId to ensure the correct model is used
+            img.src = `/api/python/recognize-video-feed?userId=${userId}&model_user=${userId}&t=${Date.now()}`;
+            img.onload = () => {
+                console.log('Streaming de reconocimiento iniciado');
+                startGesturePolling(); // Start polling for gestures
+            };
+            img.onerror = () => {
+                console.warn('Fallo del stream, reintentando...');
+                isStreaming = false;
+                setTimeout(loadVideoFeed, 1500);
+            };
+        }
+
+        // Initialize recognition service and load video feed
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!userId) {
+                showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
+                return;
+            }
+
+            // First, close the capture camera to free the device
+            showNotification('Liberando cámara de captura...');
+            fetch(`/api/python/capture-camera/close`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    console.log('Capture camera closed:', data.message);
+                    showNotification('Abriendo cámara de reconocimiento...');
+                    // Wait a moment for camera to be released
+                    setTimeout(() => {
+                        // Open recognition camera with userId
+                        fetch(`/api/python/recognition-camera/open?userId=${userId}`, { method: 'POST' })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    showNotification('Cámara de reconocimiento lista. Iniciando stream...');
+                                    setTimeout(() => { loadVideoFeed(); }, 800);
+                                } else {
+                                    showNotification('Error: ' + (data.message || 'No se pudo abrir la cámara'));
+                                    console.error('Error details:', data);
+                                }
+                            })
+                            .catch(err => {
+                                console.error('Error opening recognition camera:', err);
+                                showNotification('No se pudo abrir la cámara de reconocimiento.');
+                            });
+                    }, 500);
+                })
+                .catch(err => {
+                    console.warn('Could not close capture camera:', err);
+                    showNotification('Abriendo cámara de reconocimiento...');
+                    // Continue anyway and try to start recognition
+                    fetch(`/api/python/recognition-camera/open?userId=${userId}`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showNotification('Cámara de reconocimiento lista. Iniciando stream...');
+                                setTimeout(() => { loadVideoFeed(); }, 800);
+                            } else {
+                                showNotification('Error: ' + (data.message || 'No se pudo abrir la cámara'));
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error opening recognition camera:', err);
+                            showNotification('No se pudo abrir la cámara de reconocimiento.');
+                        });
+                });
+        });
+
+        // Poll for detected gestures
+        let gestureCheckInterval = null;
+        let currentGestureTimeout = null;
+        
+        function startGesturePolling() {
+            const gestureDisplay = document.getElementById('gestureDisplay');
+            
+            gestureCheckInterval = setInterval(() => {
+                fetch('/api/python/last-gesture')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.gesture) {
+                            // Clear any existing timeout
+                            if (currentGestureTimeout) {
+                                clearTimeout(currentGestureTimeout);
+                            }
+                            
+                            // Show the gesture
+                            gestureDisplay.textContent = data.gesture;
+                            gestureDisplay.classList.add('show');
+                            
+                            // Hide after 1.5 seconds
+                            currentGestureTimeout = setTimeout(() => {
+                                gestureDisplay.classList.remove('show');
+                            }, 1500);
+                        }
+                    })
+                    .catch(err => console.warn('Error fetching gesture:', err));
+            }, 300); // Poll every 300ms
+        }
+        
+        function stopGesturePolling() {
+            if (gestureCheckInterval) {
+                clearInterval(gestureCheckInterval);
+                gestureCheckInterval = null;
+            }
+            if (currentGestureTimeout) {
+                clearTimeout(currentGestureTimeout);
+                currentGestureTimeout = null;
+            }
+        }
+
+        // Stop recognition service when leaving the page
+        const closeRecognition = () => {
+            stopGesturePolling();
+            fetch(`/api/python/recognition-camera/close`, { method: 'POST' }).catch(() => {});
+        };
+        window.addEventListener('beforeunload', closeRecognition);
+        window.addEventListener('pagehide', closeRecognition);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) closeRecognition();
+        });
+
+        function stopRecognitionAndNavigate() {
+            stopGesturePolling();
+            fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
+                .finally(() => { window.location.href = 'dashboard.html'; });
+        }
+    </script>
+</body>
+</html>

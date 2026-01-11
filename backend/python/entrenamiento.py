@@ -20,32 +20,37 @@ user_id = sys.argv[1]
 
 # Directory for gesture images and user-specific model paths
 base_dir = os.path.dirname(__file__)
-user_dir = os.path.join(base_dir, "imagenes", user_id)
-modelo_dir = os.path.join(base_dir, "modelos", user_id)
+backend_dir = os.path.dirname(base_dir)
+usuarios_entrenamientos_dir = os.path.join(backend_dir, "usuarios-entrenamientos")
+user_training_dir = os.path.join(usuarios_entrenamientos_dir, user_id)
+modelo_dir = os.path.join(backend_dir, "modelos", user_id)
 modelo_path = os.path.join(modelo_dir, f"{user_id}_modelo_gestos.h5")
 mapa_etiquetas_path = os.path.join(modelo_dir, f"{user_id}_mapa_etiquetas.npy")
 
-# Ensure the directories exist
-os.makedirs(user_dir, exist_ok=True)
+# Ensure the model directory exists
 os.makedirs(modelo_dir, exist_ok=True)
+
+print(f"\n=== Entrenamiento del Modelo para Usuario {user_id} ===")
+print(f"Leyendo datos de: {user_training_dir}")
+print(f"Guardando modelo en: {modelo_dir}\n")
 
 # Initialize MediaPipe
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands()
 
 # Validate directories and files
-if not os.path.exists(user_dir):
-    raise FileNotFoundError(f"El directorio de gestos para el usuario {user_id} no existe: {user_dir}")
+if not os.path.exists(user_training_dir):
+    raise FileNotFoundError(f"El directorio de gestos para el usuario {user_id} no existe: {user_training_dir}")
 
-if len(os.listdir(user_dir)) == 0:
-    raise FileNotFoundError(f"No se encontraron imágenes en el directorio: {user_dir}")
+if len(os.listdir(user_training_dir)) == 0:
+    raise FileNotFoundError(f"No se encontraron imágenes en el directorio: {user_training_dir}")
 
 # Collect data and labels
 datos = []
 etiquetas = []
 
-for letter in os.listdir(user_dir):
-    letter_dir = os.path.join(user_dir, letter)
+for letter in os.listdir(user_training_dir):
+    letter_dir = os.path.join(user_training_dir, letter)
     if not os.path.isdir(letter_dir):
         continue
 

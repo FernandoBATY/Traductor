@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capturar Imágenes - Traductor de Señas</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .capture-wrapper {
+            display: flex;
+            height: 85vh;
+            gap: 20px;
+            padding: 20px;
+        }
+        .capture-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .capture-right {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #007BFF;
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+        .example-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+        .letter-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #007BFF;
+            margin-top: 10px;
+        }
+        .video-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            width: 100%;
+        }
+        .video-container img {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #000;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 20px;
+            width: 100%;
+            justify-content: center;
+        }
+        .input-container input {
+            padding: 10px;
+            font-size: 16px;
+            width: 150px;
+            text-align: center;
+            border: 2px solid #007BFF;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 24px;
+            text-transform: uppercase;
+        }
+        .input-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .input-container button:hover {
+            background-color: #0056b3;
+        }
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .notification {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            animation: fadeOut 3s forwards;
+        }
+        @keyframes fadeOut {
+            0% {
+                opacity: 1;
+            }
+            80% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .back, .train-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .back {
+            background-color: #6c757d;
+        }
+        .back:hover {
+            background-color: #5a6268;
+        }
+        .train-button {
+            background-color: #28a745;
+        }
+        .train-button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="content-container">
+        <h1>Capturar Imágenes - Lenguaje de Señas</h1>
+        <p>Ingresa la letra y captura imágenes para entrenar el modelo.</p>
+        
+        <div class="capture-wrapper">
+            <div class="capture-left">
+                <div class="video-container">
+                    <img id="videoFeed" src="" alt="Video feed">
+                </div>
+                <div class="input-container">
+                    <input type="text" id="gestureLetter" placeholder="Letra" maxlength="1">
+                    <button onclick="captureImage()">Capturar Gesto</button>
+                </div>
+                <div id="captureCounter" style="text-align: center; margin-top: 10px; font-size: 14px; color: #666;">
+                    Imágenes capturadas: <span id="counterValue">0</span>
+                </div>
+                <div class="button-group">
+                    <button class="back" onclick="stopCaptureAndNavigate()">Regresar</button>
+                    <button class="train-button" onclick="trainModel()">Entrenar Modelo</button>
+                </div>
+            </div>
+
+            <div class="capture-right">
+                <div style="text-align: center;">
+                    <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Ejemplo de gesto:</p>
+                    <img id="exampleImage" class="example-image" src="" alt="Ejemplo" style="display: none;">
+                    <div id="noExampleMsg" style="color: #999; font-size: 12px;">Ingresa una letra</div>
+                    <div class="letter-display" id="currentLetter">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="notification-container" id="notificationContainer"></div>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        const userId = new URLSearchParams(window.location.search).get('userId') || localStorage.getItem('userId');
+        let captureServiceStarted = false;
+        let isStreaming = false;
+        const validLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        // Start the capture service and set up video feed
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!userId) {
+                showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
+                return;
+            }
+            
+            // Setup input validation
+            const letterInput = document.getElementById('gestureLetter');
+            letterInput.addEventListener('input', (e) => {
+                let value = e.target.value.toUpperCase();
+                // Solo mantener caracteres válidos
+                value = value.split('').filter(char => validLetters.includes(char)).join('');
+                // Solo una letra
+                if (value.length > 1) {
+                    value = value.slice(-1);
+                }
+                e.target.value = value;
+                updateExampleImage(value);
+            });
+            
+            // Load initial image counter
+            updateCaptureCounter();
+            
+            // Ensure recognition camera is closed, then open capture camera
+            showNotification('Preparando cámara de captura...');
+            fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
+                .finally(() => {
+                    fetch(`/api/python/capture-camera/open`, { method: 'POST' })
+                        .then(() => {
+                            showNotification('Cámara de captura lista. Iniciando stream...');
+                            setTimeout(() => { loadVideoFeed(); }, 800);
+                        })
+                        .catch(() => {
+                            showNotification('No se pudo abrir la cámara de captura.');
+                        });
+                });
+
+            // Stop capture service when leaving the page
+            const closeCapture = () => fetch(`/api/python/capture-camera/close`, { method: 'POST' }).catch(() => {});
+            window.addEventListener('beforeunload', closeCapture);
+            window.addEventListener('pagehide', closeCapture);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) closeCapture();
+            });
+        });
+
+        function updateExampleImage(letter) {
+            const exampleImg = document.getElementById('exampleImage');
+            const noExampleMsg = document.getElementById('noExampleMsg');
+            const letterDisplay = document.getElementById('currentLetter');
+            
+            if (letter && validLetters.includes(letter)) {
+                // Try different filename patterns (Ejemplo- first, since that's what we have)
+                const imagePatterns = [
+                    `/static/Letras/Ejemplo-${letter}.jpg`,
+                    `/static/Letras/Ejemplo-${letter}.png`,
+                    `/static/Letras/${letter}.jpg`,
+                    `/static/Letras/${letter}.png`
+                ];
+                
+                letterDisplay.textContent = letter;
+                exampleImg.style.display = 'block';
+                noExampleMsg.style.display = 'none';
+                
+                let patternIndex = 0;
+                const tryPattern = () => {
+                    if (patternIndex >= imagePatterns.length) {
+                        console.warn(`No image found for letter ${letter}`);
+                        exampleImg.style.display = 'none';
+                        noExampleMsg.style.display = 'block';
+                        return;
+                    }
+                    
+                    exampleImg.src = imagePatterns[patternIndex];
+                    patternIndex++;
+                };
+                
+                exampleImg.onerror = tryPattern;
+                tryPattern();
+            } else {
+                letterDisplay.textContent = '-';
+                exampleImg.style.display = 'none';
+                noExampleMsg.style.display = 'block';
+            }
+        }
+
+        function loadVideoFeed() {
+            if (isStreaming) return;
+            const img = document.getElementById('videoFeed');
+            isStreaming = true;
+            img.src = `/api/python/capture-video-feed?userId=${userId}&t=${Date.now()}`;
+            img.onload = () => {
+                console.log('Streaming de captura iniciado');
+            };
+            img.onerror = () => {
+                console.warn('Fallo del stream, reintentando...');
+                isStreaming = false;
+                setTimeout(loadVideoFeed, 1500);
+            };
+        }
+
+        function showNotification(message) {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+
+            container.appendChild(notification);
+
+            // Remove the notification after 3 seconds
+            setTimeout(() => {
+                container.removeChild(notification);
+            }, 3000);
+        }
+
+        function captureImage() {
+            const letter = document.getElementById('gestureLetter').value.trim().toUpperCase();
+
+            if (!letter) {
+                showNotification('Por favor, ingresa una letra para capturar.');
+                return;
+            }
+
+            if (!validLetters.includes(letter)) {
+                showNotification('Solo se permiten letras de la A a la Z.');
+                return;
+            }
+
+            if (!userId) {
+                showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
+                return;
+            }
+
+            fetch(`/api/python/capture-image?userId=${userId}&letter=${letter}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Imagen para la letra "${letter}" capturada.`);
+                    updateCaptureCounter();
+                } else {
+                    showNotification('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error al capturar la imagen:', error);
+                showNotification('Ocurrió un error al capturar la imagen.');
+            });
+        }
+
+        function updateCaptureCounter() {
+            const userId = localStorage.getItem('userId');
+            // Make a request to count captured images
+            fetch(`/api/python/count-images?userId=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const totalCount = data.total || 0;
+                    document.getElementById('counterValue').textContent = totalCount;
+                })
+                .catch(error => console.warn('Could not update counter:', error));
+        }
+
+        function trainModel() {
+            if (!userId) {
+                showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
+                return;
+            }
+
+            showNotification('Entrenando modelo... esto puede tomar unos minutos.');
+
+            fetch(`/api/python/train-model?userId=${userId}`, {
+                method: 'POST'
+            })
+                .then(response => {
+                    // Handle both 200 and 500 responses
+                    return response.json().then(data => ({
+                        status: response.status,
+                        data: data
+                    }));
+                })
+                .then(({ status, data }) => {
+                    if (status === 200 && data.success) {
+                        showNotification('¡Modelo entrenado exitosamente!');
+                    } else {
+                        const errorMsg = data.message || data.error || 'Error desconocido';
+                        showNotification('Error: ' + errorMsg);
+                        console.error('Training error:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al entrenar el modelo:', error);
+                    showNotification('Ocurrió un error al entrenar el modelo: ' + error.message);
+                });
+        }
+
+        function stopCaptureAndNavigate() {
+            fetch(`/api/python/capture-camera/close`, { method: 'POST' })
+                .finally(() => { window.location.href = 'dashboard.html'; });
+        }
+    </script>
+</body>
+</html>

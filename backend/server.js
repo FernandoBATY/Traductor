@@ -16,17 +16,26 @@ connectDB();
 app.use(express.json({ extended: false }));
 app.use(cors());
 
-// Serve static files from the "templates" directory
-app.use(express.static(path.join(__dirname, '../templates')));
+// Serve static files from the "frontend/templates" directory
+app.use(express.static(path.join(__dirname, '../frontend/templates')));
 
-// Serve static files from the "js" directory
-app.use('/js', express.static(path.join(__dirname, '../js')));
+// Serve static files from the "frontend/js" directory
+app.use('/js', express.static(path.join(__dirname, '../frontend/js')));
+
+// Serve static files from the "frontend/css" directory
+app.use('/css', express.static(path.join(__dirname, '../frontend/css')));
+
+// Serve static files from the "frontend/static" directory
+app.use('/static', express.static(path.join(__dirname, '../frontend/static')));
 
 // Ensure the auth route is correctly registered
 app.use('/api/auth', require('./routes/auth'));
 
 // Ensure the script route is correctly registered
 app.use('/api', require('./routes/script'));
+
+// Python scripts routes (capture, train, recognition)
+app.use('/api/python', require('./routes/python-scripts'));
 
 // Serve a placeholder favicon to avoid missing file errors
 app.get('/favicon.ico', (req, res) => {
@@ -67,67 +76,57 @@ app.get('/api/start-reconocimiento', async (req, res) => {
     }
 });
 
-// Start captura_imagenes.py automatically when the Node.js server starts
-const capturaImagenesPath = path.join(__dirname, '../scrips/captura_imagenes.py');
-const capturaImagenesProcess = spawn('python', [capturaImagenesPath]);
+// Auto-start Python services (capture and recognition) without grabbing camera until requested
+const capturaImagenesPath = path.join(__dirname, './python/captura_imagenes.py');
+const reconocimientoPath = path.join(__dirname, './python/reconocimiento.py');
 
-capturaImagenesProcess.stdout.on('data', (data) => {
-    console.log(`captura_imagenes.py: ${data.toString().trim()}`);
-});
+let capturaProc = null;
+let reconocimientoProc = null;
 
-capturaImagenesProcess.stderr.on('data', (data) => {
-    console.error(`captura_imagenes.py Error: ${data.toString().trim()}`);
-});
+function startPythonService(scriptPath, env = {}) {
+    try {
+        const proc = spawn('python', [scriptPath], {
+            env: { ...process.env, ...env },
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+        proc.stdout.on('data', (d) => console.log(`${path.basename(scriptPath)}: ${d.toString().trim()}`));
+        proc.stderr.on('data', (d) => console.error(`${path.basename(scriptPath)} Error: ${d.toString().trim()}`));
+        return proc;
+    } catch (e) {
+        console.error(`Failed to start ${scriptPath}:`, e.message);
+        return null;
+    }
+}
 
-capturaImagenesProcess.on('close', (code) => {
-    console.log(`captura_imagenes.py exited with code ${code}`);
-});
+// Start both services on server boot (attached so they exit with Node)
+capturaProc = startPythonService(capturaImagenesPath);
+reconocimientoProc = startPythonService(reconocimientoPath, { USER_ID: '1' });
 
-// Start reconocimiento.py automatically when the Node.js server starts
-const reconocimientoPath = path.join(__dirname, '../scrips/reconocimiento.py');
-const userId = 1; // Replace with the actual user ID or dynamically fetch it if needed
-const reconocimientoProcess = spawn('python', [reconocimientoPath], {
-    env: { ...process.env, USER_ID: userId.toString() }, // Set USER_ID environment variable
-    detached: true,
-    stdio: 'ignore'
-});
+async function gracefulShutdown() {
+    console.log('Shutting down: closing cameras and stopping Python services...');
+    try { await axios.post('http://localhost:5001/camera/close'); } catch {}
+    try { await axios.post('http://localhost:5000/api/camera/close'); } catch {}
+    try { capturaProc && capturaProc.kill(); } catch {}
+    try { reconocimientoProc && reconocimientoProc.kill(); } catch {}
+}
 
-reconocimientoProcess.unref();
-
-reconocimientoProcess.stdout?.on('data', (data) => {
-    console.log(`reconocimiento.py: ${data.toString().trim()}`);
-});
-
-reconocimientoProcess.stderr?.on('data', (data) => {
-    console.error(`reconocimiento.py Error: ${data.toString().trim()}`);
-});
-
-reconocimientoProcess.on('close', (code) => {
-    console.log(`reconocimiento.py exited with code ${code}`);
-});
+process.on('SIGINT', async () => { await gracefulShutdown(); process.exit(0); });
+process.on('SIGTERM', async () => { await gracefulShutdown(); process.exit(0); });
+process.on('exit', async () => { await gracefulShutdown(); });
 
 // Ruta para servir el archivo "index.html" por defecto
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../templates/index.html'));
+    res.sendFile(path.join(__dirname, '../frontend/templates/index.html'));
 });
 
 // Dynamic route to serve HTML pages
 app.get('/:page', (req, res) => {
     const page = req.params.page;
-    res.sendFile(path.join(__dirname, '../templates', page));
+    res.sendFile(path.join(__dirname, '../frontend/templates', page));
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`);
     console.log(`Open http://localhost:${PORT} to view the project.`);
 });
-
-// Remove or replace this line as it is causing the error
-// const extendedObject = Object.assign(obj1, obj2);
-
-// If you need to use Object.assign, ensure obj1 and obj2 are defined
-// Example:
-// const obj1 = { key1: 'value1' };
-// const obj2 = { key2: 'value2' };
-// const extendedObject = Object.assign(obj1, obj2);

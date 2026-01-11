@@ -1,1 +1,49 @@
+# Virtual Environment
 venv/
+env/
+.venv/
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Dependencies
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Optional npm cache directory
+.npm
+
+# User-specific data (not images)
+# Keep the trained models and training data directories
+!/backend/modelos/
+!/backend/usuarios-entrenamientos/
