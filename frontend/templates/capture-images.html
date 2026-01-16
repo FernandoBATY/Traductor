@@ -1,90 +1,40 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="light" lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Capturar Imágenes - Traductor de Señas</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Entrenamiento de Gestos - Sign Language AI</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+        <script src="../js/custom-alert.js"></script>
+    <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0df259",
+                        "background-light": "#f5f8f6",
+                        "background-dark": "#102216",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
     <style>
-        .capture-wrapper {
-            display: flex;
-            height: 85vh;
-            gap: 20px;
-            padding: 20px;
-        }
-        .capture-left {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .capture-right {
-            width: 250px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #007BFF;
-            border-radius: 10px;
-            padding: 10px;
-            background-color: #f0f0f0;
-        }
-        .example-image {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 5px;
-            object-fit: cover;
-        }
-        .letter-display {
-            font-size: 48px;
-            font-weight: bold;
-            color: #007BFF;
-            margin-top: 10px;
-        }
-        .video-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex: 1;
-            width: 100%;
-        }
-        .video-container img {
-            width: 100%;
-            height: 100%;
-            border: 2px solid #000;
-            border-radius: 10px;
-            object-fit: cover;
-        }
-        .input-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-top: 20px;
-            width: 100%;
-            justify-content: center;
-        }
-        .input-container input {
-            padding: 10px;
-            font-size: 16px;
-            width: 150px;
-            text-align: center;
-            border: 2px solid #007BFF;
-            border-radius: 5px;
-            font-weight: bold;
-            font-size: 24px;
-            text-transform: uppercase;
-        }
-        .input-container button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .input-container button:hover {
-            background-color: #0056b3;
+        body {
+            font-family: 'Lexend', sans-serif;
         }
         .notification-container {
             position: fixed;
@@ -96,87 +46,153 @@
             gap: 10px;
         }
         .notification {
-            background-color: #007BFF;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            background-color: #0df259;
+            color: #0d1c12;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(13, 242, 89, 0.3);
             animation: fadeOut 3s forwards;
+            font-weight: 600;
         }
         @keyframes fadeOut {
-            0% {
-                opacity: 1;
-            }
-            80% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .back, .train-button {
-            padding: 10px 20px;
-            font-size: 16px;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-        .back {
-            background-color: #6c757d;
-        }
-        .back:hover {
-            background-color: #5a6268;
-        }
-        .train-button {
-            background-color: #28a745;
-        }
-        .train-button:hover {
-            background-color: #218838;
+            0% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-20px); }
         }
     </style>
 </head>
-<body>
-    <div class="content-container">
-        <h1>Capturar Imágenes - Lenguaje de Señas</h1>
-        <p>Ingresa la letra y captura imágenes para entrenar el modelo.</p>
-        
-        <div class="capture-wrapper">
-            <div class="capture-left">
-                <div class="video-container">
-                    <img id="videoFeed" src="" alt="Video feed">
+<body class="bg-background-light dark:bg-background-dark min-h-screen transition-colors duration-300">
+<div class="flex flex-col min-h-screen w-full">
+    <!-- Top Navigation Bar unificado -->
+    <header class="flex flex-wrap items-center gap-4 justify-between border-b border-[#e7f4eb] dark:border-white/10 px-6 lg:px-10 py-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="flex items-center gap-3 text-[#0d1c12] dark:text-white">
+            <div class="size-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined">sign_language</span>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Módulo</p>
+                <h2 class="text-lg font-bold leading-tight tracking-tight">Captura de Gestos</h2>
+            </div>
+        </div>
+        <nav class="flex items-center flex-wrap gap-2 text-sm font-semibold text-[#0d1c12] dark:text-gray-200">
+            <button onclick="goHome()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Inicio</button>
+            <button onclick="goToDictionary()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Diccionario</button>
+            <button class="px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold">Captura</button>
+            <button onclick="goToTranslator()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Visualización</button>
+        </nav>
+        <div class="flex items-center gap-3 ml-auto">
+            <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
+                <span class="material-symbols-outlined text-base">login</span>
+                <span>Iniciar sesión</span>
+            </button>
+            <div id="userSection" class="hidden flex items-center gap-3">
+                <span class="text-sm text-gray-600 dark:text-gray-300">Hola, <span id="userName" class="font-bold text-primary"></span></span>
+                <button onclick="logout()" class="flex items-center gap-1 px-4 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-500/20">
+                    <span class="material-symbols-outlined text-base">logout</span>
+                    <span>Cerrar sesión</span>
+                </button>
+            </div>
+            <button onclick="stopCaptureAndNavigate()" class="flex items-center justify-center rounded-xl h-10 w-10 bg-[#e7f4eb] dark:bg-white/10 text-[#0d1c12] dark:text-white hover:bg-primary/20 transition-colors">
+                <span class="material-symbols-outlined text-xl">home</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-[1280px] mx-auto w-full px-6 py-8">
+        <!-- Breadcrumbs -->
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+            <a class="text-[#499c65] dark:text-primary/70 text-sm font-medium" href="index.html">Entrenamiento</a>
+            <span class="text-[#499c65] dark:text-primary/70 text-sm material-symbols-outlined">chevron_right</span>
+            <span class="text-[#0d1c12] dark:text-white text-sm font-medium">Capturar Imágenes</span>
+        </div>
+
+        <!-- Page Heading -->
+        <div class="flex flex-col gap-2 mb-8">
+            <h1 class="text-[#0d1c12] dark:text-white text-4xl font-black leading-tight tracking-tight">Captura de Imágenes</h1>
+            <p class="text-[#499c65] dark:text-gray-400 text-base font-normal">Realiza los gestos frente a la cámara para alimentar el modelo en tiempo real.</p>
+        </div>
+
+        <!-- Workspace Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Video Feed & Controls (2/3) -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+                <!-- Media Player Container -->
+                <div class="bg-white dark:bg-background-dark border border-[#cee8d7] dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+                    <div class="relative flex items-center justify-center bg-gray-200 dark:bg-gray-800 aspect-video group">
+                        <!-- Video Feed -->
+                        <img id="videoFeed" src="" alt="Video feed" class="absolute inset-0 w-full h-full object-cover"/>
+                    </div>
                 </div>
-                <div class="input-container">
-                    <input type="text" id="gestureLetter" placeholder="Letra" maxlength="1">
-                    <button onclick="captureImage()">Capturar Gesto</button>
-                </div>
-                <div id="captureCounter" style="text-align: center; margin-top: 10px; font-size: 14px; color: #666;">
-                    Imágenes capturadas: <span id="counterValue">0</span>
-                </div>
-                <div class="button-group">
-                    <button class="back" onclick="stopCaptureAndNavigate()">Regresar</button>
-                    <button class="train-button" onclick="trainModel()">Entrenar Modelo</button>
+
+                <!-- Input Controls Area -->
+                <div class="bg-white dark:bg-background-dark p-6 rounded-xl border border-[#cee8d7] dark:border-white/10 shadow-sm">
+                    <div class="flex flex-col md:flex-row items-end gap-6">
+                        <label class="flex flex-col flex-1 min-w-40">
+                            <p class="text-[#0d1c12] dark:text-gray-200 text-sm font-semibold pb-2">Letra a entrenar</p>
+                            <input id="gestureLetter" type="text" maxlength="1" class="form-input w-full rounded-xl text-[#0d1c12] dark:text-white border-[#cee8d7] dark:border-white/20 bg-transparent focus:ring-primary focus:border-primary h-14 px-4 text-xl font-bold uppercase" placeholder="Ej: A"/>
+                        </label>
+                        <div class="flex flex-col flex-1 min-w-40">
+                            <p class="text-[#0d1c12] dark:text-gray-200 text-sm font-semibold pb-2">Imágenes capturadas</p>
+                            <div class="flex items-center justify-between h-14 px-4 rounded-xl border border-[#cee8d7] dark:border-white/20 bg-background-light dark:bg-white/5">
+                                <span id="counterValue" class="text-2xl font-black text-primary">0</span>
+                                <span class="text-xs text-[#499c65] dark:text-primary/70 font-medium">LETRA: <span id="currentLetterSmall">-</span></span>
+                            </div>
+                        </div>
+                        <button onclick="captureImage()" class="flex-1 h-14 bg-primary hover:bg-[#0bc148] text-[#0d1c12] font-black text-lg rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 px-8">
+                            <span class="material-symbols-outlined">add_a_photo</span>
+                            CAPTURAR GESTO
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="capture-right">
-                <div style="text-align: center;">
-                    <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Ejemplo de gesto:</p>
-                    <img id="exampleImage" class="example-image" src="" alt="Ejemplo" style="display: none;">
-                    <div id="noExampleMsg" style="color: #999; font-size: 12px;">Ingresa una letra</div>
-                    <div class="letter-display" id="currentLetter">-</div>
+            <!-- Right: Reference Panel (1/3) -->
+            <div class="flex flex-col gap-6">
+                <!-- Reference Example Card -->
+                <div class="bg-white dark:bg-background-dark p-6 rounded-xl border border-[#cee8d7] dark:border-white/10 shadow-sm h-full flex flex-col">
+                    <div class="flex items-center gap-2 mb-6 text-primary">
+                        <span class="material-symbols-outlined">lightbulb</span>
+                        <h3 class="font-bold text-[#0d1c12] dark:text-white uppercase tracking-wider text-sm">Ejemplo de gesto</h3>
+                    </div>
+                    
+                    <!-- Gesture Reference Image -->
+                    <div class="rounded-xl bg-[#f8fcf9] dark:bg-white/5 border border-dashed border-[#499c65] dark:border-primary/30 p-4 mb-6 min-h-[200px] flex items-center justify-center">
+                        <img id="exampleImage" alt="Ejemplo de gesto" class="w-full h-auto rounded-lg grayscale hover:grayscale-0 transition-all duration-500" style="display: none;"/>
+                        <div id="noExampleMsg" class="text-[#499c65] dark:text-gray-500 text-sm italic">Ingresa una letra para ver el ejemplo</div>
+                    </div>
+                    
+                    <div class="flex-1 flex flex-col items-center justify-center">
+                        <p class="text-xs font-bold text-[#499c65] uppercase mb-1">Letra actual</p>
+                        <span id="currentLetter" class="text-9xl font-black text-[#0d1c12] dark:text-white">-</span>
+                    </div>
+                    
+                    <div id="gestureDescription" class="mt-8 p-4 bg-primary/10 rounded-xl border border-primary/20" style="display: none;">
+                        <p class="text-[#0d1c12] dark:text-gray-300 text-xs leading-relaxed italic">
+                            Realiza el gesto correspondiente a la letra seleccionada.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="notification-container" id="notificationContainer"></div>
+
+        <!-- Bottom Navigation Bar -->
+        <div class="mt-12 flex items-center justify-between border-t border-[#e7f4eb] dark:border-white/10 pt-8 pb-12">
+            <button onclick="stopCaptureAndNavigate()" class="px-8 py-3 rounded-xl border-2 border-[#cee8d7] dark:border-white/20 text-[#499c65] dark:text-gray-300 font-bold hover:bg-[#e7f4eb] dark:hover:bg-white/5 transition-colors flex items-center gap-2">
+                <span class="material-symbols-outlined">arrow_back</span>
+                REGRESAR
+            </button>
+            <div class="flex gap-4">
+                <button onclick="trainModel()" class="px-8 py-3 rounded-xl bg-primary text-[#0d1c12] font-black hover:bg-[#0bc148] transition-all shadow-lg flex items-center gap-2">
+                    <span class="material-symbols-outlined">model_training</span>
+                    ENTRENAR MODELO
+                </button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Notification Container -->
+<div class="notification-container" id="notificationContainer"></div>
     <script src="/js/dashboard.js"></script>
     <script>
         const userId = new URLSearchParams(window.location.search).get('userId') || localStorage.getItem('userId');
@@ -184,8 +200,45 @@
         let isStreaming = false;
         const validLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+        function checkAuth() {
+            const uid = localStorage.getItem('userId');
+            const uname = localStorage.getItem('userName');
+            const loginBtn = document.getElementById('loginBtn');
+            const userSection = document.getElementById('userSection');
+            const nameSpan = document.getElementById('userName');
+
+            if (uid && uname) {
+                loginBtn.classList.add('hidden');
+                userSection.classList.remove('hidden');
+                nameSpan.textContent = uname;
+            } else {
+                loginBtn.classList.remove('hidden');
+                userSection.classList.add('hidden');
+            }
+        }
+
+        function goHome(){ window.location.href = 'index.html'; }
+        function goToLoginPage(){ window.location.href = 'inicio-sesion.html'; }
+        function goToDictionary(){ window.location.href = 'diccionario.html'; }
+        function goToTranslator(){
+            const uid = localStorage.getItem('userId');
+            if (!uid) {
+                showCustomAlert('Inicia sesión para usar el traductor', 'warning');
+                setTimeout(()=>window.location.href='inicio-sesion.html',1200);
+                return;
+            }
+            window.location.href = `visualize-model.html?userId=${uid}`;
+        }
+        function logout(){
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userName');
+            checkAuth();
+            showCustomAlert('Sesión cerrada', 'success');
+        }
+
         // Start the capture service and set up video feed
         document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
             if (!userId) {
                 showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
                 return;
@@ -235,9 +288,11 @@
             const exampleImg = document.getElementById('exampleImage');
             const noExampleMsg = document.getElementById('noExampleMsg');
             const letterDisplay = document.getElementById('currentLetter');
+            const letterSmall = document.getElementById('currentLetterSmall');
+            const gestureDesc = document.getElementById('gestureDescription');
             
             if (letter && validLetters.includes(letter)) {
-                // Try different filename patterns (Ejemplo- first, since that's what we have)
+                // Try different filename patterns
                 const imagePatterns = [
                     `/static/Letras/Ejemplo-${letter}.jpg`,
                     `/static/Letras/Ejemplo-${letter}.png`,
@@ -246,8 +301,10 @@
                 ];
                 
                 letterDisplay.textContent = letter;
+                letterSmall.textContent = letter;
                 exampleImg.style.display = 'block';
                 noExampleMsg.style.display = 'none';
+                gestureDesc.style.display = 'block';
                 
                 let patternIndex = 0;
                 const tryPattern = () => {
@@ -266,8 +323,10 @@
                 tryPattern();
             } else {
                 letterDisplay.textContent = '-';
+                letterSmall.textContent = '-';
                 exampleImg.style.display = 'none';
                 noExampleMsg.style.display = 'block';
+                gestureDesc.style.display = 'none';
             }
         }
 
@@ -383,7 +442,7 @@
 
         function stopCaptureAndNavigate() {
             fetch(`/api/python/capture-camera/close`, { method: 'POST' })
-                .finally(() => { window.location.href = 'dashboard.html'; });
+                .finally(() => { window.location.href = 'index.html'; });
         }
     </script>
 </body>

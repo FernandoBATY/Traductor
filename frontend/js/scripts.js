@@ -17,17 +17,17 @@ async function register() {
 
     // Validaciones básicas
     if (!username || !email || !password) {
-        alert('Por favor, complete todos los campos.');
+        showCustomAlert('Por favor, complete todos los campos.', 'warning');
         return;
     }
 
     if (!validateEmail(email)) {
-        alert('Por favor, ingrese un correo electrónico válido.');
+        showCustomAlert('Por favor, ingrese un correo electrónico válido.', 'warning');
         return;
     }
 
     if (!validatePassword(password)) {
-        alert('La contraseña debe tener al menos 6 caracteres e incluir números y letras.');
+        showCustomAlert('La contraseña debe tener al menos 6 caracteres e incluir números y letras.', 'warning');
         return;
     }
 
@@ -42,15 +42,17 @@ async function register() {
 
         const data = await response.json();
         if (response.status === 200) {
-            alert('Usuario registrado con éxito');
+            showCustomAlert('Usuario registrado con éxito', 'success');
             // Redirigir a la página de inicio de sesión
-            container.classList.remove("right-panel-active");
+            setTimeout(() => {
+                container.classList.remove("right-panel-active");
+            }, 1500);
         } else {
-            alert(data.msg);
+            showCustomAlert(data.msg, 'error');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error registrando el usuario. Por favor, intente de nuevo.');
+        showCustomAlert('Error registrando el usuario. Por favor, intente de nuevo.', 'error');
     }
 }
 
@@ -59,7 +61,7 @@ async function login() {
     const password = document.getElementById('passwordLogin').value;
 
     if (!email || !password) {
-        alert('Por favor, complete todos los campos.');
+        showCustomAlert('Por favor, complete todos los campos.', 'warning');
         return;
     }
 
@@ -74,19 +76,22 @@ async function login() {
 
         if (!response.ok) {
             const errorData = await response.json();
-            alert(errorData.msg || 'Error al iniciar sesión');
+            showCustomAlert(errorData.msg || 'Error al iniciar sesión', 'error');
             return;
         }
 
         const data = await response.json();
         if (data.token) {
-            alert('Inicio de sesión exitoso');
+            showCustomAlert('Inicio de sesión exitoso', 'success');
             localStorage.setItem('userId', data.user.id);
-            window.location.href = 'dashboard.html';
+            localStorage.setItem('userName', data.user.username);
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1500);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al iniciar sesión. Por favor, intente de nuevo.');
+        showCustomAlert('Error al iniciar sesión. Por favor, intente de nuevo.', 'error');
     }
 }
 

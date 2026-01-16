@@ -1,40 +1,45 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="light" lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizar Modelo - Traductor de Señas</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>SignLink AI - Traducción en Tiempo Real</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+        <script src="../js/custom-alert.js"></script>
+    <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#0df259",
+                "background-light": "#f5f8f6",
+                "background-dark": "#102216",
+              },
+              fontFamily: {
+                "display": ["Lexend", "sans-serif"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
     <style>
-        .video-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 80vh;
-            position: relative;
+        body { font-family: 'Lexend', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(13, 242, 89, 0.2);
         }
-        .video-container img {
-            width: 80%;
-            height: 80%;
-            border: 2px solid #000;
-            border-radius: 10px;
-            object-fit: cover;
+        .dark .glass-panel {
+            background: rgba(16, 34, 22, 0.8);
+            border: 1px solid rgba(13, 242, 89, 0.1);
         }
-        .gesture-display {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 120px;
-            font-weight: bold;
-            color: #28a745;
-            text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
-            z-index: 10;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        .gesture-display.show {
-            opacity: 1;
+        .glow-text {
+            text-shadow: 0 0 15px rgba(13, 242, 89, 0.6);
         }
         .notification-container {
             position: fixed;
@@ -46,43 +51,142 @@
             gap: 10px;
         }
         .notification {
-            background-color: #dc3545;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            background-color: #0df259;
+            color: #0d1c12;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(13, 242, 89, 0.3);
             animation: fadeOut 3s forwards;
+            font-weight: 600;
         }
         @keyframes fadeOut {
-            0% {
-                opacity: 1;
-            }
-            80% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
+            0% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-20px); }
         }
     </style>
 </head>
-<body>
-    <div class="content-container">
-        <h1>Visualizar Modelo</h1>
-        <p>Aquí puedes visualizar el modelo en tiempo real.</p>
-        <div class="video-container">
-            <div id="gestureDisplay" class="gesture-display"></div>
-            <!-- Embed the video feed from reconocimiento.py via Node proxy -->
-            <img id="videoFeed" src="" alt="Model visualization feed">
+<body class="bg-background-light dark:bg-background-dark text-[#0d1c12] dark:text-white min-h-screen flex flex-col overflow-hidden">
+    <!-- Top Navigation Bar unificado -->
+    <header class="flex flex-wrap items-center gap-4 justify-between border-b border-[#e7f4eb] dark:border-white/10 px-6 lg:px-10 py-4 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md z-50">
+        <div class="flex items-center gap-3 text-[#0d1c12] dark:text-white">
+            <div class="size-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined">sign_language</span>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Módulo</p>
+                <h2 class="text-lg font-bold leading-tight tracking-tight">Visualización</h2>
+            </div>
         </div>
-        <button class="back" onclick="stopRecognitionAndNavigate()">Regresar</button>
+        <nav class="flex items-center flex-wrap gap-2 text-sm font-semibold text-[#0d1c12] dark:text-gray-200">
+            <button onclick="goHome()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Inicio</button>
+            <button onclick="goToDictionary()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Diccionario</button>
+            <button onclick="goToCapture()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Captura</button>
+            <button class="px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold">Visualización</button>
+        </nav>
+        <div class="flex items-center gap-3 ml-auto">
+            <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
+                <span class="material-symbols-outlined text-base">login</span>
+                <span>Iniciar sesión</span>
+            </button>
+            <div id="userSection" class="hidden flex items-center gap-3">
+                <span class="text-sm text-gray-600 dark:text-gray-300">Hola, <span id="userName" class="font-bold text-primary"></span></span>
+                <button onclick="logout()" class="flex items-center gap-1 px-4 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-500/20">
+                    <span class="material-symbols-outlined text-base">logout</span>
+                    <span>Cerrar sesión</span>
+                </button>
+            </div>
+            <button onclick="stopRecognitionAndNavigate()" class="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-[#e7f4eb] dark:bg-white/10 text-[#0d1c12] dark:text-white">
+                <span class="material-symbols-outlined text-[20px]">home</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="relative flex-1 flex flex-col items-center justify-center p-6 bg-background-light dark:bg-background-dark">
+        <!-- Headline Section (Dynamic Overlay Concept) -->
+        <div class="absolute top-4 z-20 w-full max-w-2xl px-4 pointer-events-none">
+            <div class="glass-panel rounded-xl p-6 shadow-2xl flex flex-col items-center border-t-4 border-t-primary">
+                <p class="text-[#499c65] dark:text-primary/80 text-xs font-bold uppercase tracking-widest mb-2">Traducción en Tiempo Real</p>
+                <h1 id="gestureDisplay" class="text-primary tracking-tight text-[56px] font-bold leading-none glow-text">-</h1>
+                <div class="w-full h-1 bg-black/5 dark:bg-white/10 mt-4 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary w-3/4 shadow-[0_0_10px_rgba(13,242,89,0.5)]"></div>
+                </div>
+                <p class="text-xs text-[#0d1c12]/60 dark:text-white/60 mt-2">Sistema de reconocimiento activo</p>
+            </div>
+        </div>
+
+        <!-- Video Feed Container -->
+        <div class="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-white/5 dark:border-white/10">
+            <!-- Camera Feed -->
+            <img id="videoFeed" src="" alt="Video feed" class="absolute inset-0 w-full h-full object-cover"/>
+        </div>
+
+        <!-- Floating Navigation -->
+        <div class="absolute bottom-10 left-10 z-20">
+            <button onclick="stopRecognitionAndNavigate()" class="flex items-center gap-3 px-8 h-14 bg-white dark:bg-background-dark border border-primary/20 dark:border-primary/40 text-[#0d1c12] dark:text-white rounded-full shadow-xl hover:bg-primary/10 transition-all font-bold group">
+                <span class="material-symbols-outlined transition-transform group-hover:-translate-x-1">arrow_back</span>
+                <span>Regresar al Panel</span>
+            </button>
+        </div>
+
+        <!-- Meta Text Footer -->
+        <div class="mt-8 text-center max-w-lg">
+            <p class="text-[#499c65] text-sm font-medium leading-normal">
+                Asegúrate de que tu mano esté bien iluminada y dentro del recuadro central para una detección precisa.
+            </p>
+        </div>
+    </main>
+
+    <!-- UI Background Decoration -->
+    <div class="fixed inset-0 pointer-events-none -z-10 overflow-hidden opacity-20">
+        <div class="absolute top-[-10%] right-[-10%] size-96 bg-primary blur-[120px] rounded-full"></div>
+        <div class="absolute bottom-[-10%] left-[-10%] size-96 bg-primary blur-[120px] rounded-full opacity-30"></div>
     </div>
+
+    <!-- Notification Container -->
     <div class="notification-container" id="notificationContainer"></div>
     <script src="/js/dashboard.js"></script>
     <script>
         const userId = new URLSearchParams(window.location.search).get('userId') || localStorage.getItem('userId');
         let isStreaming = false;
+
+        function checkAuth() {
+            const uid = localStorage.getItem('userId');
+            const uname = localStorage.getItem('userName');
+            const loginBtn = document.getElementById('loginBtn');
+            const userSection = document.getElementById('userSection');
+            const nameSpan = document.getElementById('userName');
+
+            if (uid && uname) {
+                loginBtn.classList.add('hidden');
+                userSection.classList.remove('hidden');
+                nameSpan.textContent = uname;
+            } else {
+                loginBtn.classList.remove('hidden');
+                userSection.classList.add('hidden');
+            }
+        }
+
+        function goHome(){ window.location.href = 'index.html'; }
+        function goToLoginPage(){ window.location.href = 'inicio-sesion.html'; }
+        function goToDictionary(){ window.location.href = 'diccionario.html'; }
+        function goToCapture(){
+            const uid = localStorage.getItem('userId');
+            if (!uid) {
+                showCustomAlert('Inicia sesión para capturar gestos', 'warning');
+                setTimeout(()=>window.location.href='inicio-sesion.html',1200);
+                return;
+            }
+            window.location.href = `capture-images.html?userId=${uid}`;
+        }
+        function goToTranslator(){ window.location.href = 'visualize-model.html'; }
+        function logout(){
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userName');
+            checkAuth();
+            showCustomAlert('Sesión cerrada', 'success');
+        }
 
         function showNotification(message) {
             const container = document.getElementById('notificationContainer');
@@ -117,6 +221,7 @@
 
         // Initialize recognition service and load video feed
         document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
             if (!userId) {
                 showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
                 return;
@@ -182,19 +287,11 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.gesture) {
-                            // Clear any existing timeout
-                            if (currentGestureTimeout) {
-                                clearTimeout(currentGestureTimeout);
-                            }
-                            
-                            // Show the gesture
-                            gestureDisplay.textContent = data.gesture;
-                            gestureDisplay.classList.add('show');
-                            
-                            // Hide after 1.5 seconds
-                            currentGestureTimeout = setTimeout(() => {
-                                gestureDisplay.classList.remove('show');
-                            }, 1500);
+                            // Update the gesture display
+                            gestureDisplay.textContent = 'LETRA: ' + data.gesture;
+                        } else {
+                            // No gesture detected
+                            gestureDisplay.textContent = '-';
                         }
                     })
                     .catch(err => console.warn('Error fetching gesture:', err));
@@ -226,7 +323,7 @@
         function stopRecognitionAndNavigate() {
             stopGesturePolling();
             fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
-                .finally(() => { window.location.href = 'dashboard.html'; });
+                .finally(() => { window.location.href = 'index.html'; });
         }
     </script>
 </body>
