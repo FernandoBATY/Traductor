@@ -5,7 +5,6 @@ env/
 
 # Node modules
 node_modules/
-package-lock.json
 
 # Dependencies
 __pycache__/

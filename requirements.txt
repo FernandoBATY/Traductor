@@ -1,0 +1,10 @@
+tensorflow==2.12.0
+keras==2.12.0
+protobuf==4.25.3
+mediapipe==0.10.21
+# Use a NumPy version compatible with TensorFlow 2.12 (requires <1.24)
+numpy==1.23.5
+opencv-python
+Flask==3.0.0
+flask-cors==4.0.0
+waitress==2.1.2
