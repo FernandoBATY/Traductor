@@ -9,7 +9,41 @@ Sistema de traducción de lenguaje de señas usando reconocimiento por gestos co
 - MySQL/MariaDB
 - Git
 
-## Configuración del Entorno
+## Inicio Rápido 🚀
+
+### Windows
+```batch
+# 1. Activar entorno virtual
+venv\Scripts\activate
+
+# 2. Ejecutar el sistema
+run_system.bat
+```
+
+### macOS/Linux
+```bash
+# 1. Activar entorno virtual  
+source venv/bin/activate
+
+# 2. Ejecutar el sistema
+./run_system.sh
+```
+
+### Manual
+```bash
+# 1. Activar entorno virtual
+# Windows: venv\Scripts\activate
+# Linux/macOS: source venv/bin/activate
+
+# 2. Iniciar servidor Node.js
+node backend/server.js
+
+# 3. Abrir navegador en: http://localhost:3000
+```
+
+---
+
+## Configuración Completa
 
 ### 1. Clonar el Repositorio
 
@@ -30,22 +64,46 @@ yarn install
 
 ### 3. Configuración de Python
 
-#### Crear entorno virtual (recomendado)
+#### ⚠️ IMPORTANTE: Usar Python 3.9.0
+
+Este proyecto requiere **Python 3.9.0** específicamente para compatibilidad con TensorFlow 2.12.
+
+#### Crear entorno virtual
 
 ```bash
-# Windows
+# Verificar versión de Python
+python --version  # Debe ser 3.9.0
+
+# Crear entorno virtual
 python -m venv venv
+
+# Activar entorno virtual
+# Windows:
 venv\Scripts\activate
 
-# macOS/Linux
-python3 -m venv venv
+# macOS/Linux:
 source venv/bin/activate
 ```
 
 #### Instalar dependencias de Python
 
 ```bash
+# Actualizar pip
+python -m pip install --upgrade pip
+
+# Instalar dependencias (puede tomar varios minutos)
 pip install -r requirements.txt
+
+# Si hay errores, instalar individualmente:
+pip install tensorflow==2.12.0
+pip install mediapipe==0.10.21
+pip install flask==3.0.0 flask-cors==4.0.0
+```
+
+#### Verificar instalación
+
+```bash
+python -c "import numpy, cv2, flask; print('✅ Dependencias básicas instaladas')"
 ```
 
 ### 4. Configuración de Base de Datos
@@ -54,6 +112,15 @@ pip install -r requirements.txt
 
 ```sql
 CREATE DATABASE usuarios;
+```
+
+#### Ejecutar script de configuración
+
+```bash
+# Ejecutar el script SQL incluido
+mysql -u root -p usuarios < database_setup.sql
+
+# O ejecutar manualmente cada comando del archivo database_setup.sql
 ```
 
 #### Configurar variables de entorno
@@ -76,8 +143,9 @@ PORT=3000
 
 ```
 ├── package.json              # Dependencias de Node.js
-├── server.js                 # Servidor principal
+├── server.js                 # Servidor principal  
 ├── requirements.txt          # Dependencias de Python
+├── database_setup.sql        # Script de configuración de BD
 ├── .env.example             # Plantilla de variables de entorno
 ├── backend/
 │   ├── server.js            # Servidor backend
@@ -96,6 +164,18 @@ PORT=3000
     ├── templates/           # Páginas HTML
     └── static/              # Recursos estáticos
 ```
+
+## Base de Datos
+
+El proyecto utiliza MySQL con las siguientes tablas:
+
+- **users**: Gestión de usuarios y autenticación
+- **modelos**: Información de modelos ML entrenados  
+- **entrenamientos**: Sesiones de captura de gestos
+- **diccionario**: Catálogo de gestos y traducciones
+- **estadisticas_reconocimiento**: Métricas de uso del sistema
+
+Para configurar la base de datos, ejecuta el archivo [database_setup.sql](database_setup.sql) después de crear la base de datos.
 
 ## Iniciar la Aplicación
 
@@ -129,11 +209,12 @@ npm start
 
 ## Funcionalidades
 
-- **Captura de Imágenes**: Captura gestos para entrenamiento
+- **Captura de Imágenes**: Captura gestos para entrenamiento con **selector de cámara**
 - **Entrenamiento de Modelo**: Entrena modelos de ML personalizados
-- **Reconocimiento en Tiempo Real**: Reconoce gestos y los traduce
+- **Reconocimiento en Tiempo Real**: Reconoce gestos y los traduce con **selector de cámara**
 - **Gestión de Usuarios**: Sistema de autenticación y perfiles
 - **Diccionario**: Base de datos de gestos y traducciones
+- **Selector de Cámara**: Permite elegir qué cámara usar en captura y reconocimiento
 
 ## Tecnologías Utilizadas
 
@@ -156,23 +237,59 @@ npm start
 
 ## Solución de Problemas
 
-### Errores Comunes
+### Errores Comunes de Python
 
-**Error de TensorFlow/NumPy:**
+**Error: TensorFlow no se carga o demora mucho:**
+- La primera carga de TensorFlow puede tomar 30-60 segundos
+- Reinicia el terminal si se queda colgado
+
+**Error de versión de Python:**
 ```bash
-pip install "numpy==1.23.5"
-pip install "tensorflow==2.12.0"
+# Verificar versión correcta
+python --version  # Debe ser exactamente 3.9.0
+```
+
+**Error de dependencies de TensorFlow:**
+```bash
+pip install "numpy==1.23.5"  # Versión específica compatible
+pip install "protobuf==4.25.3"
 ```
 
 **Problemas con MediaPipe:**
 ```bash
-pip install --upgrade mediapipe==0.10.21
+pip uninstall mediapipe
+pip install mediapipe==0.10.21
 ```
+
+**Entorno virtual no activo:**
+- Verifica que el prompt muestre `(venv)` al inicio
+- Reactiva: `venv\Scripts\activate` (Windows) o `source venv/bin/activate` (Linux/macOS)
+
+### Errores de Node.js
 
 **Error de conexión a la BD:**
 - Verificar que MySQL esté ejecutándose
 - Comprobar credenciales en `.env`
-- Asegurar que la base de datos existe
+- Asegurar que la base de datos `usuarios` existe y tiene la tabla `users`
+
+**Error de puerto ocupado:**
+```bash
+# Cambiar puerto en .env
+PORT=3001  # O cualquier otro puerto libre
+```
+
+### Errores de Base de Datos
+
+**"No database selected":**
+```sql
+USE usuarios;  -- Ejecutar antes de crear tablas
+```
+
+**Tabla users no existe:**
+```bash
+# Ejecutar el script de configuración
+mysql -u root -p usuarios < database_setup.sql
+```
 
 ## Contribuir
 

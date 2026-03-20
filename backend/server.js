@@ -16,17 +16,31 @@ connectDB();
 app.use(express.json({ extended: false }));
 app.use(cors());
 
+// Add logging middleware for debugging static files
+app.use('/static', (req, res, next) => {
+    console.log(`[DEBUG STATIC] Request: ${req.method} ${req.originalUrl}`);
+    console.log(`[DEBUG STATIC] Looking in: ${path.join(__dirname, '../frontend/static', req.url)}`);
+    next();
+});
+
 // Serve static files from the "frontend/templates" directory
 app.use(express.static(path.join(__dirname, '../frontend/templates')));
 
-// Serve static files from the "frontend/js" directory
+// Serve static files from the "frontend/js" directory  
 app.use('/js', express.static(path.join(__dirname, '../frontend/js')));
 
 // Serve static files from the "frontend/css" directory
 app.use('/css', express.static(path.join(__dirname, '../frontend/css')));
 
-// Serve static files from the "frontend/static" directory
-app.use('/static', express.static(path.join(__dirname, '../frontend/static')));
+// Serve static files from the "frontend/static" directory with better error handling
+app.use('/static', express.static(path.join(__dirname, '../frontend/static'), {
+    setHeaders: (res, filePath) => {
+        console.log(`[EXPRESS STATIC] Serving: ${filePath}`);
+        if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+            res.setHeader('Content-Type', 'image/jpeg');
+        }
+    }
+}));
 
 // Ensure the auth route is correctly registered
 app.use('/api/auth', require('./routes/auth'));

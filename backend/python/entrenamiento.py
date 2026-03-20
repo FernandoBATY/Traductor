@@ -87,19 +87,49 @@ if len(datos) != len(etiquetas):
 datos = np.array(datos)
 etiquetas = np.array(etiquetas)
 
-# Map labels to integers
-unicos = np.unique(etiquetas)
-if len(unicos) == 0:
-    raise ValueError("No se encontraron etiquetas únicas. Asegúrate de que las imágenes estén etiquetadas correctamente.")
-mapa_etiquetas = {etiqueta: i for i, etiqueta in enumerate(unicos)}
-etiquetas_numericas = np.array([mapa_etiquetas[e] for e in etiquetas])
-
-# Build or load the model
+# Check if existing model and label map exist
 if os.path.exists(modelo_path) and os.path.exists(mapa_etiquetas_path):
+    # Load existing model and label map
     modelo = keras.models.load_model(modelo_path)
     mapa_etiquetas = np.load(mapa_etiquetas_path, allow_pickle=True).item()
-    print("Modelo y mapa de etiquetas cargados.")
+    print("Modelo y mapa de etiquetas existente cargado.")
+    
+    # Check if new labels are compatible with existing model
+    unicos_actuales = np.unique(etiquetas)
+    nuevas_etiquetas = set(unicos_actuales) - set(mapa_etiquetas.keys())
+    
+    if nuevas_etiquetas:
+        print(f"Nuevas etiquetas detectadas: {nuevas_etiquetas}")
+        # Add new labels to existing map
+        for etiqueta in nuevas_etiquetas:
+            mapa_etiquetas[etiqueta] = len(mapa_etiquetas)
+        
+        # Rebuild model with updated number of classes
+        input_shape = modelo.layers[0].input_shape[1:]
+        modelo = Sequential([
+            Dense(256, activation="relu", input_shape=input_shape),
+            Dropout(0.4),
+            Dense(128, activation="relu"),
+            Dropout(0.3),
+            Dense(64, activation="relu"),
+            Dropout(0.2),
+            Dense(len(mapa_etiquetas), activation="softmax")
+        ])
+        modelo.compile(optimizer=Adam(learning_rate=0.001), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+        print(f"Modelo reconstruido para {len(mapa_etiquetas)} clases.")
+    
+    # Map current labels using existing/updated map
+    etiquetas_numericas = np.array([mapa_etiquetas[e] for e in etiquetas])
+    
 else:
+    # Create new model and label map
+    unicos = np.unique(etiquetas)
+    if len(unicos) == 0:
+        raise ValueError("No se encontraron etiquetas únicas. Asegúrate de que las imágenes estén etiquetadas correctamente.")
+    
+    mapa_etiquetas = {etiqueta: i for i, etiqueta in enumerate(unicos)}
+    etiquetas_numericas = np.array([mapa_etiquetas[e] for e in etiquetas])
+    
     modelo = Sequential([
         Dense(256, activation="relu", input_shape=(len(datos[0]),)),
         Dropout(0.4),
@@ -110,6 +140,11 @@ else:
         Dense(len(unicos), activation="softmax")
     ])
     modelo.compile(optimizer=Adam(learning_rate=0.001), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    print(f"Nuevo modelo creado para {len(unicos)} clases: {list(mapa_etiquetas.keys())}")
+
+print(f"Entrenamiento con {len(etiquetas)} muestras, {len(mapa_etiquetas)} clases: {list(mapa_etiquetas.keys())}")
+print(f"Rango de etiquetas numéricas: {min(etiquetas_numericas)} - {max(etiquetas_numericas)}")
+print(f"Número de neuronas de salida del modelo: {modelo.output_shape[-1]}")
 
 # Train the model
 try:

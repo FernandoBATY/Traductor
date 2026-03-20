@@ -4,9 +4,11 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <title>Traductor Señas - Diccionario</title>
+
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&display=swap" rel="stylesheet"/>
+
   <script id="tailwind-config">
     tailwind.config = {
       darkMode: "class",
@@ -30,6 +32,7 @@
       },
     }
   </script>
+
   <style>
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .card-compact .letter-card { height: 180px; }
@@ -37,9 +40,11 @@
     .letter-overlay-large .letter-label { font-size: 2.25rem; }
     .fallback-message { font-size: 0.85rem; }
   </style>
+
   <script src="../js/custom-alert.js"></script>
   <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
 </head>
+
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
   <!-- Header común -->
   <header class="w-full px-6 lg:px-20 py-6 flex flex-wrap gap-4 items-center justify-between bg-white/80 dark:bg-[#152a1c]/80 backdrop-blur border-b border-gray-200 dark:border-white/10">
@@ -52,17 +57,20 @@
         <p class="text-xs text-gray-500 dark:text-gray-400">Diccionario LSM</p>
       </div>
     </div>
+
     <nav class="flex items-center flex-wrap gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
       <button onclick="goHome()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Inicio</button>
       <button onclick="goToDictionary()" class="px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold">Diccionario</button>
       <button onclick="goToCapture()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Captura</button>
       <button onclick="goToTranslator()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Visualización</button>
     </nav>
+
     <div class="flex items-center gap-3 ml-auto">
       <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
         <span class="material-symbols-outlined text-base">login</span>
         <span>Iniciar sesión</span>
       </button>
+
       <div id="userSection" class="hidden flex items-center gap-3">
         <span class="text-sm text-gray-600 dark:text-gray-300">Hola, <span id="userName" class="font-bold text-primary"></span></span>
         <button onclick="logout()" class="flex items-center gap-1 px-4 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-500/20">
@@ -79,7 +87,11 @@
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 class="text-lg font-bold">Cómo aprovechar el diccionario</h2>
-          <p class="text-sm text-gray-700 dark:text-gray-300">Cada tarjeta muestra la configuración de mano para una letra del abecedario en Lengua de Señas Mexicana. Observa la forma, la orientación de la palma y la posición de los dedos; repite el gesto frente a la cámara para que el traductor lo reconozca.</p>
+          <p class="text-sm text-gray-700 dark:text-gray-300">
+            Cada tarjeta muestra la configuración de mano para una letra del abecedario en Lengua de Señas Mexicana.
+            Observa la forma, la orientación de la palma y la posición de los dedos; repite el gesto frente a la cámara
+            para que el traductor lo reconozca.
+          </p>
         </div>
         <div class="flex gap-2">
           <button id="helpBtn" class="px-3 py-2 rounded-lg bg-primary/10 text-primary flex items-center gap-1 hover:bg-primary/20">
@@ -90,15 +102,259 @@
           </button>
         </div>
       </div>
-      <p class="text-sm text-gray-700 dark:text-gray-300">Consejos rápidos: practica con luz frontal suave, mantén la mano dentro del encuadre y evita fondos muy oscuros o brillantes. Activa el modo compacto si quieres ver más letras en pantalla y usa etiquetas grandes si necesitas contraste adicional.</p>
-      <p class="text-sm text-gray-700 dark:text-gray-300">Si estás enseñando, combina este material con ejercicios de deletreo, secuencias de palabras cortas y pausas breves para reforzar la memoria muscular.</p>
+
+      <p class="text-sm text-gray-700 dark:text-gray-300">
+        Consejos rápidos: practica con luz frontal suave, mantén la mano dentro del encuadre y evita fondos muy oscuros o brillantes.
+        Activa el modo compacto si quieres ver más letras en pantalla y usa etiquetas grandes si necesitas contraste adicional.
+      </p>
+
+      <p class="text-sm text-gray-700 dark:text-gray-300">
+        Si estás enseñando, combina este material con ejercicios de deletreo, secuencias de palabras cortas y pausas breves
+        para reforzar la memoria muscular.
+      </p>
     </div>
   </section>
 
   <!-- Grid of Letters -->
   <main class="px-6 lg:px-20 py-6">
     <div id="gridWrapper" class="transition-all">
-      <div id="lettersGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"></div>
+      <div id="lettersGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        
+        <!-- Letra A -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-A.jpg" alt="Letra A" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">A</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra A — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra B -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-B.jpg" alt="Letra B" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">B</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra B — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra C -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-C.jpg" alt="Letra C" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">C</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra C — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra D -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-D.jpg" alt="Letra D" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">D</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra D — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra E -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-E.jpg" alt="Letra E" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">E</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra E — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra F -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-F.jpg" alt="Letra F" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">F</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra F — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra G -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-G.jpg" alt="Letra G" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">G</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra G — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra H -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-H.jpg" alt="Letra H" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">H</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra H — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra I -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-I.jpg" alt="Letra I" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">I</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra I — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra J -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-J.jpg" alt="Letra J" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">J</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra J — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra K -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-K.jpg" alt="Letra K" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">K</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra K — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra L -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-L.jpg" alt="Letra L" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">L</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra L — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra M -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-M.jpg" alt="Letra M" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">M</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra M — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra N -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-N.jpg" alt="Letra N" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">N</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra N — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra O -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-O.jpg" alt="Letra O" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">O</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra O — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra P -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-P.jpg" alt="Letra P" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">P</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra P — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra Q -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-Q.jpg" alt="Letra Q" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">Q</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra Q — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra R -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-R.jpg" alt="Letra R" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">R</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra R — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra S -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-S.jpg" alt="Letra S" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">S</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra S — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra T -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-T.jpg" alt="Letra T" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">T</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra T — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra U -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-U.jpg" alt="Letra U" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">U</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra U — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra V -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-V.jpg" alt="Letra V" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">V</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra V — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra W -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-W.jpg" alt="Letra W" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">W</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra W — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra X -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-X.jpg" alt="Letra X" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">X</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra X — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra Y -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-Y.jpg" alt="Letra Y" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">Y</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra Y — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+        <!-- Letra Z -->
+        <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          <div class="relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5">
+            <img src="/static/Letras/Ejemplo-Z.jpg" alt="Letra Z" class="max-h-full max-w-full object-contain">
+            <div class="letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow">Z</div>
+          </div>
+          <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">Letra Z — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.</div>
+        </div>
+
+      </div>
     </div>
   </main>
 
@@ -166,8 +422,15 @@
     const configModal = document.getElementById('configModal');
     document.getElementById('helpBtn').addEventListener('click', ()=> toggleHelp(true));
     document.getElementById('configBtn').addEventListener('click', ()=> toggleConfig(true));
-    function toggleHelp(show){ helpModal.classList.toggle('hidden', !show); helpModal.classList.toggle('flex', show); }
-    function toggleConfig(show){ configModal.classList.toggle('hidden', !show); configModal.classList.toggle('flex', show); }
+
+    function toggleHelp(show){
+      helpModal.classList.toggle('hidden', !show);
+      helpModal.classList.toggle('flex', show);
+    }
+    function toggleConfig(show){
+      configModal.classList.toggle('hidden', !show);
+      configModal.classList.toggle('flex', show);
+    }
 
     // Config toggles
     const darkToggle = document.getElementById('darkModeToggle');
@@ -200,67 +463,6 @@
       localStorage.setItem('labels', overlayToggle.checked ? 'large' : 'normal');
     });
 
-    // Build letters grid
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-    const extensions = ['png','jpg','jpeg','webp'];
-
-    function setLetterImage(img, letter, attemptIdx){
-      const wrapper = img.parentElement;
-      const nameVariants = [letter, letter.toLowerCase(), `Ejemplo-${letter}`, `Ejemplo-${letter.toLowerCase()}`];
-      const candidates = [];
-      nameVariants.forEach(name => extensions.forEach(ext => candidates.push(`/static/Letras/${name}.${ext}`)));
-
-      if (attemptIdx >= candidates.length){
-        img.classList.add('hidden');
-        if (!wrapper.querySelector('.fallback-message')){
-          const fallback = document.createElement('div');
-          fallback.className = 'fallback-message absolute inset-0 flex items-center justify-center text-center text-gray-600 dark:text-gray-400 px-3';
-          fallback.textContent = 'Imagen no disponible para esta letra';
-          wrapper.appendChild(fallback);
-        }
-        wrapper.classList.add('image-fallback');
-        return;
-      }
-
-      const url = candidates[attemptIdx];
-      img.src = url;
-      img.onerror = () => setLetterImage(img, letter, attemptIdx+1);
-      img.onload = () => {
-        img.classList.remove('hidden');
-        const fallback = wrapper.querySelector('.fallback-message');
-        if (fallback) fallback.remove();
-        wrapper.classList.remove('image-fallback');
-      };
-    }
-
-    const grid = document.getElementById('lettersGrid');
-    letters.forEach(letter => {
-      const card = document.createElement('div');
-      card.className = 'letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col';
-
-      const imgWrap = document.createElement('div');
-      imgWrap.className = 'relative flex-1 min-h-[200px] flex items-center justify-center bg-black/5 dark:bg-white/5';
-      const img = document.createElement('img');
-      img.className = 'max-h-full max-w-full object-contain hidden';
-      img.alt = `Letra ${letter}`;
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      setLetterImage(img, letter, 0);
-      const label = document.createElement('div');
-      label.className = 'letter-label absolute bottom-2 right-2 bg-primary text-background-dark font-bold rounded-lg px-3 py-1 shadow';
-      label.textContent = letter;
-      imgWrap.appendChild(img);
-      imgWrap.appendChild(label);
-
-      const caption = document.createElement('div');
-      caption.className = 'px-4 py-3 text-sm text-gray-700 dark:text-gray-300';
-      caption.textContent = `Letra ${letter} — Forma de mano en LSM. Fíjate en la orientación y en los dedos activos.`;
-
-      card.appendChild(imgWrap);
-      card.appendChild(caption);
-      grid.appendChild(card);
-    });
-
     // Apply stored UI prefs
     if (localStorage.getItem('cards') === 'compact') document.getElementById('gridWrapper').classList.add('card-compact');
     if (localStorage.getItem('labels') === 'large') document.getElementById('lettersGrid').classList.add('letter-overlay-large');
@@ -286,6 +488,7 @@
     function goHome(){ window.location.href = 'index.html'; }
     function goToLoginPage(){ window.location.href = 'inicio-sesion.html'; }
     function goToDictionary(){ window.location.href = 'diccionario.html'; }
+
     function goToCapture(){
       const userId = localStorage.getItem('userId');
       if (!userId) {
@@ -295,6 +498,7 @@
       }
       window.location.href = `capture-images.html?userId=${userId}`;
     }
+
     function goToTranslator(){
       const userId = localStorage.getItem('userId');
       if (!userId) {
@@ -304,6 +508,7 @@
       }
       window.location.href = `visualize-model.html?userId=${userId}`;
     }
+
     function logout(){
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');

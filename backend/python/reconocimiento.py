@@ -98,20 +98,40 @@ hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1,
 cap = None
 camera_active = False
 last_frame_time = 0
+camera_index = 0
+
+def get_available_cameras():
+    """Get list of available cameras"""
+    cameras = []
+    for i in range(10):  # Check first 10 camera indices
+        test_cap = cv2.VideoCapture(i)
+        if test_cap.isOpened():
+            cameras.append({
+                'index': i,
+                'name': f'Cámara {i}'
+            })
+            test_cap.release()
+    return cameras
+
+def set_camera_index(index):
+    """Set the camera index to use"""
+    global camera_index
+    camera_index = index
+    print(f"Recognition camera index set to: {index}")
 
 def open_camera():
-    global cap, camera_active
+    global cap, camera_active, camera_index
     if camera_active and cap is not None and cap.isOpened():
         return True
     max_retries = 5
     for attempt in range(max_retries):
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(camera_index)
         if cap.isOpened():
             camera_active = True
-            print(f"Camera opened successfully on attempt {attempt + 1}")
+            print(f"Recognition camera {camera_index} opened successfully on attempt {attempt + 1}")
             return True
         if attempt < max_retries - 1:
-            print(f"Failed to open camera on attempt {attempt + 1}, retrying...")
+            print(f"Failed to open recognition camera {camera_index} on attempt {attempt + 1}, retrying...")
             import time
             time.sleep(0.5)
     print("Error: Unable to access the camera after {} attempts.".format(max_retries))
@@ -260,6 +280,31 @@ def get_last_gesture():
 def camera_close():
     close_camera()
     return "Camera closed", 200
+
+@app.route('/api/cameras', methods=['GET'])
+def get_cameras():
+    """Get list of available cameras"""
+    try:
+        cameras = get_available_cameras()
+        return {'cameras': cameras, 'current': camera_index}
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route('/api/camera/set/<int:index>', methods=['POST'])
+def set_camera(index):
+    """Set camera index to use"""
+    try:
+        set_camera_index(index)
+        # Close current camera and reopen with new index
+        if camera_active:
+            close_camera()
+            if open_camera():
+                return {'success': True, 'camera_index': index}
+            else:
+                return {'error': 'Failed to open new camera'}, 500
+        return {'success': True, 'camera_index': index}
+    except Exception as e:
+        return {'error': str(e)}, 500
 
 def inactivity_worker(threshold=10):
     global last_frame_time

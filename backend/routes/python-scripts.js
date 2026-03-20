@@ -100,6 +100,29 @@ router.post('/capture-camera/close', async (req, res) => {
     }
 });
 
+// Get available cameras for capture service
+router.get('/capture-cameras', async (req, res) => {
+    try {
+        const r = await axios.get('http://localhost:5001/api/cameras');
+        res.json(r.data);
+    } catch (e) {
+        console.error('Error getting capture cameras:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to get capture cameras.' });
+    }
+});
+
+// Set camera for capture service
+router.post('/capture-camera/set/:index', async (req, res) => {
+    try {
+        const index = req.params.index;
+        const r = await axios.post(`http://localhost:5001/api/camera/set/${index}`);
+        res.json(r.data);
+    } catch (e) {
+        console.error('Error setting capture camera:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to set capture camera.' });
+    }
+});
+
 // Count images captured for a given userId
 router.get('/count-images', (req, res) => {
     const userId = req.query.userId;
@@ -467,6 +490,29 @@ router.post('/recognition-camera/close', async (req, res) => {
     } catch (e) {
         console.error('Error closing recognition camera:', e.message);
         res.status(500).json({ success: false, message: 'Failed to close recognition camera.' });
+    }
+});
+
+// Get available cameras for recognition service
+router.get('/recognition-cameras', async (req, res) => {
+    try {
+        const r = await axios.get('http://localhost:5000/api/cameras');
+        res.json(r.data);
+    } catch (e) {
+        console.error('Error getting recognition cameras:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to get recognition cameras.' });
+    }
+});
+
+// Set camera for recognition service
+router.post('/recognition-camera/set/:index', async (req, res) => {
+    try {
+        const index = req.params.index;
+        const r = await axios.post(`http://localhost:5000/api/camera/set/${index}`);
+        res.json(r.data);
+    } catch (e) {
+        console.error('Error setting recognition camera:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to set recognition camera.' });
     }
 });
 

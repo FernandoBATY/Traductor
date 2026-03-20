@@ -118,6 +118,20 @@
 
         <!-- Video Feed Container -->
         <div class="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-white/5 dark:border-white/10">
+            <!-- Camera Selection Panel -->
+            <div class="absolute top-4 right-4 z-10">
+                <div class="glass-panel px-4 py-3 rounded-lg shadow-lg">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary text-sm">videocam</span>
+                        <select id="cameraSelect" class="form-select rounded-lg text-[#0d1c12] dark:text-white border-[#cee8d7] dark:border-white/20 bg-white/80 dark:bg-background-dark/80 focus:ring-primary focus:border-primary text-sm">
+                            <option value="">Detectando cámaras...</option>
+                        </select>
+                        <button id="refreshCameras" onclick="loadAvailableCameras()" class="text-primary hover:text-[#0bc148] transition-colors" title="Actualizar cámaras">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
             <!-- Camera Feed -->
             <img id="videoFeed" src="" alt="Video feed" class="absolute inset-0 w-full h-full object-cover"/>
         </div>
@@ -325,6 +339,73 @@
             fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
                 .finally(() => { window.location.href = 'index.html'; });
         }
+
+        // Camera selection functions
+        async function loadAvailableCameras() {
+            try {
+                const response = await fetch('/api/python/recognition-cameras');
+                const data = await response.json();
+                
+                const select = document.getElementById('cameraSelect');
+                select.innerHTML = '';
+                
+                if (data.cameras && data.cameras.length > 0) {
+                    data.cameras.forEach(camera => {
+                        const option = document.createElement('option');
+                        option.value = camera.index;
+                        option.textContent = camera.name;
+                        if (camera.index === data.current) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">No hay cámaras disponibles</option>';
+                }
+            } catch (error) {
+                console.error('Error loading cameras:', error);
+                document.getElementById('cameraSelect').innerHTML = '<option value="">Error cargando cámaras</option>';
+            }
+        }
+
+        async function onCameraChange() {
+            const select = document.getElementById('cameraSelect');
+            const selectedIndex = select.value;
+            
+            if (selectedIndex === '') return;
+            
+            try {
+                // Stop current recognition
+                stopGesturePolling();
+                
+                showCustomAlert(`Cambiando a cámara ${selectedIndex}...`, 'info');
+                
+                const response = await fetch(`/api/python/recognition-camera/set/${selectedIndex}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showCustomAlert(`Cámara ${selectedIndex} seleccionada correctamente`, 'success');
+                    // Reload video feed and restart recognition after changing camera
+                    setTimeout(() => {
+                        loadVideoFeed();
+                        setTimeout(startGesturePolling, 1000);
+                    }, 500);
+                } else {
+                    showCustomAlert(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error setting camera:', error);
+                showCustomAlert('Error al cambiar la cámara', 'error');
+            }
+        }
+
+        // Initialize camera selector on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAvailableCameras();
+            document.getElementById('cameraSelect').addEventListener('change', onCameraChange);
+        });
     </script>
 </body>
 </html>

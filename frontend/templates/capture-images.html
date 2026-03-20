@@ -118,6 +118,21 @@
             <div class="lg:col-span-2 flex flex-col gap-6">
                 <!-- Media Player Container -->
                 <div class="bg-white dark:bg-background-dark border border-[#cee8d7] dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+                    <!-- Camera Selection -->
+                    <div class="px-4 py-3 border-b border-[#cee8d7] dark:border-white/10 bg-[#f8fcf9] dark:bg-white/5">
+                        <div class="flex items-center gap-4">
+                            <span class="material-symbols-outlined text-primary text-sm">videocam</span>
+                            <label class="flex items-center gap-3 flex-1">
+                                <span class="text-[#0d1c12] dark:text-gray-200 text-sm font-semibold">Cámara:</span>
+                                <select id="cameraSelect" class="form-select rounded-lg text-[#0d1c12] dark:text-white border-[#cee8d7] dark:border-white/20 bg-white dark:bg-background-dark focus:ring-primary focus:border-primary text-sm flex-1 max-w-xs">
+                                    <option value="">Detectando cámaras...</option>
+                                </select>
+                            </label>
+                            <button id="refreshCameras" onclick="loadAvailableCameras()" class="text-primary hover:text-[#0bc148] transition-colors" title="Actualizar lista de cámaras">
+                                <span class="material-symbols-outlined text-sm">refresh</span>
+                            </button>
+                        </div>
+                    </div>
                     <div class="relative flex items-center justify-center bg-gray-200 dark:bg-gray-800 aspect-video group">
                         <!-- Video Feed -->
                         <img id="videoFeed" src="" alt="Video feed" class="absolute inset-0 w-full h-full object-cover"/>
@@ -444,6 +459,70 @@
             fetch(`/api/python/capture-camera/close`, { method: 'POST' })
                 .finally(() => { window.location.href = 'index.html'; });
         }
+
+        // Camera selection functions
+        async function loadAvailableCameras() {
+            try {
+                const response = await fetch('/api/python/capture-cameras');
+                const data = await response.json();
+                
+                const select = document.getElementById('cameraSelect');
+                select.innerHTML = '';
+                
+                if (data.cameras && data.cameras.length > 0) {
+                    data.cameras.forEach(camera => {
+                        const option = document.createElement('option');
+                        option.value = camera.index;
+                        option.textContent = camera.name;
+                        if (camera.index === data.current) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">No hay cámaras disponibles</option>';
+                }
+            } catch (error) {
+                console.error('Error loading cameras:', error);
+                document.getElementById('cameraSelect').innerHTML = '<option value="">Error cargando cámaras</option>';
+            }
+        }
+
+        async function onCameraChange() {
+            const select = document.getElementById('cameraSelect');
+            const selectedIndex = select.value;
+            
+            if (selectedIndex === '') return;
+            
+            try {
+                showNotification(`Cambiando a cámara ${selectedIndex}...`);
+                
+                const response = await fetch(`/api/python/capture-camera/set/${selectedIndex}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(`Cámara ${selectedIndex} seleccionada correctamente`);
+                    // Reload video feed after changing camera
+                    setTimeout(() => {
+                        isStreaming = false;
+                        loadVideoFeed();
+                    }, 500);
+                } else {
+                    showNotification(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Error setting camera:', error);
+                showNotification('Error al cambiar la cámara');
+            }
+        }
+
+        // Initialize camera selector on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAvailableCameras();
+            document.getElementById('cameraSelect').addEventListener('change', onCameraChange);
+        });
     </script>
 </body>
 </html>
