@@ -1,12 +1,13 @@
-# Virtual Environment
+# Virtual Environments
 venv/
-env/
 .venv/
+env/
+backend/venv/
 
-# Node modules
+# Node
 node_modules/
 
-# Dependencies
+# Dependencias compiladas / cache
 __pycache__/
 *.pyc
 *.pyo
@@ -25,11 +26,11 @@ build/
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Entorno / secretos
 .env
 .env.local
 
-# Database
+# BBDD local
 *.db
 *.sqlite
 *.sqlite3
@@ -39,10 +40,13 @@ logs/
 *.log
 npm-debug.log*
 
-# Optional npm cache directory
+# npm cache
 .npm
 
-# User-specific data (not images)
-# Keep the trained models and training data directories
-!/backend/modelos/
-!/backend/usuarios-entrenamientos/
+# Dataset fuente (descargable de nuevo) y datos de entrenamiento de usuarios
+Lengua de Senas Mexicana.v5i.voc/
+backend/usuarios-entrenamientos/
+
+# Modelos: solo se sube el modelo BASE compartido
+backend/modelos/*
+!backend/modelos/base/
