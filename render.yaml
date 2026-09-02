@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: traductor-backend
+    runtime: docker
+    plan: starter
+    dockerfilePath: Dockerfile
+    envVars:
+      # MySQL (Aiven) - configurar credenciales en el panel de Render
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_NAME
+        value: defaultdb
+      - key: DB_PORT
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      # JWT
+      - key: JWT_SECRET
+        generateValue: true
+      # Default user
+      - key: USER_ID
+        value: "2"
