@@ -8,6 +8,7 @@ from tensorflow import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.optimizers import Adam
+from gestos_utils import area_mano, vector_normalizado
 import sys
 
 # Enable eager execution
@@ -68,12 +69,11 @@ for letter in os.listdir(user_training_dir):
         resultados = hands.process(imagen_rgb)
 
         if resultados.multi_hand_landmarks:
-            for landmarks in resultados.multi_hand_landmarks:
-                gesto = []
-                for punto in landmarks.landmark:
-                    gesto.extend([punto.x, punto.y, punto.z])
-                datos.append(gesto)
-                etiquetas.append(letter)
+            # Si hay varias manos, tomamos la más grande (la del gesto principal)
+            mejor = max(resultados.multi_hand_landmarks, key=area_mano)
+            gesto = vector_normalizado(mejor)
+            datos.append(gesto)
+            etiquetas.append(letter)
         else:
             print(f"No se detectaron manos en la imagen: {archivo}")
 
