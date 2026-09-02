@@ -21,6 +21,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Runtime ligero para el reconocimiento (evita cargar TensorFlow completo en memória).
+# En Python 3.9 tflite-runtime está disponible como wheel propio.
+RUN pip install --no-cache-dir tflite-runtime || true
+
 # Install Node dependencies
 COPY package.json package-lock.json* ./
 RUN npm install --production

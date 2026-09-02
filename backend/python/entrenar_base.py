@@ -193,6 +193,22 @@ def main():
     print(f"Modelo base guardado en: {MODELO_PATH}")
     print(f"Mapa de etiquetas guardado en: {MAPA_PATH}")
 
+    # Convertir el modelo base a TensorFlow Lite para el reconocimiento ligero
+    try:
+        import tensorflow as tf
+        tflite_base = os.path.join(MODELO_DIR, "base_modelo_gestos.tflite")
+        converter = tf.lite.TFLiteConverter.from_keras_model(modelo)
+        with open(tflite_base, "wb") as f:
+            f.write(converter.convert())
+        # Copia con nombre genérico por si otra ruta lo busca
+        tflite_gen = os.path.join(MODELO_DIR, "modelo_gestos.tflite")
+        if not os.path.exists(tflite_gen):
+            import shutil
+            shutil.copy(tflite_base, tflite_gen)
+        print(f"Modelo base convertido a TFLite: {tflite_base}")
+    except Exception as e:
+        print(f"AVISO: no se pudo convertir el modelo base a TFLite: {e}")
+
 
 if __name__ == "__main__":
     main()

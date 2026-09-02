@@ -156,3 +156,15 @@ except Exception as e:
 modelo.save(modelo_path)
 np.save(mapa_etiquetas_path, mapa_etiquetas)
 print(f"Entrenamiento completo. Modelo guardado en {modelo_path}.")
+
+# Convertir a TensorFlow Lite para el reconocimiento ligero (arranque rápido y poca RAM)
+try:
+    import tensorflow as tf
+    tflite_path = os.path.join(modelo_dir, f"{user_id}_modelo_gestos.tflite")
+    converter = tf.lite.TFLiteConverter.from_keras_model(modelo)
+    tflite_model = converter.convert()
+    with open(tflite_path, "wb") as f:
+        f.write(tflite_model)
+    print(f"Modelo convertido a TFLite: {tflite_path}")
+except Exception as e:
+    print(f"AVISO: no se pudo convertir a TFLite (se mantiene .h5): {e}")
