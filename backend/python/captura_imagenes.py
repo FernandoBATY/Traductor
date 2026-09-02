@@ -56,7 +56,9 @@ def set_camera_index(index):
     print(f"Camera index set to: {index}")
 
 def open_camera():
-    global cap, camera_active, camera_index
+    global cap, camera_active, camera_index, last_frame_time
+    camera_index = 0  # Siempre usar la cámara predeterminada
+    last_frame_time = time.time()
     if camera_active and cap is not None and cap.isOpened():
         return True
     max_retries = 5
@@ -68,7 +70,6 @@ def open_camera():
             return True
         if attempt < max_retries - 1:
             print(f"Failed to open camera {camera_index} on attempt {attempt + 1}, retrying...")
-            import time
             time.sleep(0.5)
     print("Error: Could not open camera after {} attempts.".format(max_retries))
     return False

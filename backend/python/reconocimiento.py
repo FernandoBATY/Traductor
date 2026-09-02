@@ -4,6 +4,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from keras.models import load_model
+from gestos_utils import vector_crudo, vector_normalizado
 import os
 import glob
 import subprocess
@@ -15,8 +16,8 @@ app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Necesario para usar flash messages
 
 # Define static and dynamic gestures
-static_gestures = set("ABCDEFGHILMNOPRSTUVWY")
-dynamic_gestures = set("JKQXZ")
+static_gestures = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+dynamic_gestures = set("")
 
 # Initialize variables to track hand movement
 previous_landmarks = None
@@ -41,38 +42,59 @@ mapa_etiquetas = None
 mapa_inverso = None
 
 def load_user_model(user_id):
-    """Load model for a specific user"""
+    """Load model for a specific user, with fallback to the shared base model."""
     global modelo, mapa_etiquetas, mapa_inverso, current_user_id
     
-    model_dir = os.path.join(backend_dir, "modelos", str(user_id))
+    # Directorios a probar: primero el del usuario, luego el modelo base compartido
+    dirs_a_probar = [os.path.join(backend_dir, "modelos", str(user_id))]
+    modelo_base_dir = os.path.join(backend_dir, "modelos", "base")
+    if os.path.isdir(modelo_base_dir):
+        dirs_a_probar.append(modelo_base_dir)
     
-    # Resolve model and label file names supporting both with/without user prefix
-    model_candidates = [
-        os.path.join(model_dir, "modelo_gestos.h5"),
-        os.path.join(model_dir, f"{user_id}_modelo_gestos.h5")
-    ]
-    label_candidates = [
-        os.path.join(model_dir, "mapa_etiquetas.npy"),
-        os.path.join(model_dir, f"{user_id}_mapa_etiquetas.npy")
-    ]
-    
-    model_path = next((p for p in model_candidates if os.path.exists(p)), None)
-    label_map_path = next((p for p in label_candidates if os.path.exists(p)), None)
-    
-    # Fallback: pick first matching files if above failed
-    if not model_path:
-        h5_files = glob.glob(os.path.join(model_dir, "*.h5"))
-        model_path = h5_files[0] if h5_files else None
-    if not label_map_path:
-        npy_files = [f for f in glob.glob(os.path.join(model_dir, "*.npy")) if "etiquetas" in os.path.basename(f)]
-        label_map_path = npy_files[0] if npy_files else None
+    model_path = None
+    label_map_path = None
+    modelo_origen = None
+
+    for model_dir in dirs_a_probar:
+        # Resolve model and label file names supporting both with/without user prefix
+        model_candidates = [
+            os.path.join(model_dir, "modelo_gestos.h5"),
+            os.path.join(model_dir, f"{user_id}_modelo_gestos.h5"),
+            os.path.join(model_dir, "base_modelo_gestos.h5")
+        ]
+        label_candidates = [
+            os.path.join(model_dir, "mapa_etiquetas.npy"),
+            os.path.join(model_dir, f"{user_id}_mapa_etiquetas.npy"),
+            os.path.join(model_dir, "base_mapa_etiquetas.npy")
+        ]
+        
+        m = next((p for p in model_candidates if os.path.exists(p)), None)
+        l = next((p for p in label_candidates if os.path.exists(p)), None)
+        
+        # Fallback: pick first matching files in the directory if above failed
+        if not m:
+            h5_files = glob.glob(os.path.join(model_dir, "*.h5"))
+            m = h5_files[0] if h5_files else None
+        if not l:
+            npy_files = [f for f in glob.glob(os.path.join(model_dir, "*.npy")) if "etiquetas" in os.path.basename(f)]
+            l = npy_files[0] if npy_files else None
+        
+        if m and l:
+            model_path, label_map_path, modelo_origen = m, l, model_dir
+            break
     
     # Check if model files exist
     if not model_path or not label_map_path:
-        raise FileNotFoundError(f"Modelo o mapa de etiquetas no encontrado en {model_dir}. Entrena el modelo primero.")
+        raise FileNotFoundError(
+            f"Modelo o mapa de etiquetas no encontrado para el usuario {user_id}. Entrena el modelo primero."
+        )
     
     # Load model and labels
-    print(f"Loading model for user {user_id} from {model_path}")
+    usando_base = os.path.basename(os.path.normpath(modelo_origen)) == "base"
+    if usando_base:
+        print(f"Usuario {user_id} sin modelo propio: usando el modelo base compartido ({model_path})")
+    else:
+        print(f"Cargando modelo del usuario {user_id} desde {model_path}")
     modelo = load_model(model_path)
     mapa_etiquetas = np.load(label_map_path, allow_pickle=True).item()
     mapa_inverso = {v: k for k, v in mapa_etiquetas.items()}
@@ -120,7 +142,9 @@ def set_camera_index(index):
     print(f"Recognition camera index set to: {index}")
 
 def open_camera():
-    global cap, camera_active, camera_index
+    global cap, camera_active, camera_index, last_frame_time
+    camera_index = 0  # Siempre usar la cámara predeterminada
+    last_frame_time = time.time()
     if camera_active and cap is not None and cap.isOpened():
         return True
     max_retries = 5
@@ -132,7 +156,6 @@ def open_camera():
             return True
         if attempt < max_retries - 1:
             print(f"Failed to open recognition camera {camera_index} on attempt {attempt + 1}, retrying...")
-            import time
             time.sleep(0.5)
     print("Error: Unable to access the camera after {} attempts.".format(max_retries))
     return False
@@ -168,13 +191,13 @@ def generate_frames():
                 # Draw hand landmarks on frame
                 mp_dibujo.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
                 
-                gesto = []
-                for punto in hand_landmarks.landmark:
-                    gesto.extend([punto.x, punto.y, punto.z])
+                # Características: crudas para detectar movimiento, normalizadas para clasificar
+                gesto = vector_crudo(hand_landmarks)
+                vector_modelo = vector_normalizado(hand_landmarks)
 
-                if len(gesto) == 63:  # Validate gesture vector length
+                if modelo is not None and len(vector_modelo) == 63:  # Validate gesture vector length
                     try:
-                        prediccion = modelo.predict(np.array([gesto]), verbose=0)
+                        prediccion = modelo.predict(np.array([vector_modelo]), verbose=0)
                         if prediccion.any():  # Validate prediction
                             indice = np.argmax(prediccion)
                             if indice in mapa_inverso:
@@ -189,9 +212,9 @@ def generate_frames():
                                         movement_counter = 0
                                 previous_landmarks = gesto
 
-                                # Determine if the gesture should be recognized
-                                if (etiqueta in static_gestures and movement_counter == 0) or \
-                                   (etiqueta in dynamic_gestures and movement_counter >= movement_frames):
+                                # Determinar si el gesto debe reconocerse (todas las letras son estáticas;
+# el contador de movimiento actúa como antirrebote: se reconoce al pausar)
+                                if movement_counter == 0:
                                     # Store the detected gesture instead of drawing it on frame
                                     last_detected_gesture = etiqueta
                                     last_gesture_time = time.time()
@@ -231,11 +254,11 @@ def start_reconocimiento():
 @app.route('/api/video_feed')
 def video_feed():
     print("Received request for /api/video_feed")
-    if modelo is None:
-        return Response("Model not loaded. Call /api/load-model first.", status=503)
+    # El feed se transmite aunque no haya modelo; la predicción se omite hasta cargarlo
     if not camera_active:
         return Response("Camera inactive", status=503)
     if cap is None or not cap.isOpened():
+        # Try open once to recover
         if not open_camera():
             return Response("Camera open failed", status=503)
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
@@ -261,9 +284,7 @@ def load_model_endpoint():
 
 @app.route('/api/camera/open', methods=['POST'])
 def camera_open():
-    # Check if model is loaded
-    if modelo is None:
-        return "Model not loaded. Call /api/load-model first.", 503
+    # La cámara se abre aunque no haya modelo; el reconocimiento se habilita al cargar el modelo
     if open_camera():
         return "Camera opened", 200
     return "Failed to open camera", 500
