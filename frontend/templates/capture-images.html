@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Entrenamiento de Gestos - Sign Language AI</title>
+    <title>Entrenamiento de Gestos - Inteligencia Artificial</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -81,6 +81,9 @@
             <button onclick="goToTranslator()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Visualización</button>
         </nav>
         <div class="flex items-center gap-3 ml-auto">
+            <button id="darkModeBtn" onclick="toggleTheme()" class="flex size-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors" title="Modo oscuro">
+                <span id="themeIcon" class="material-symbols-outlined text-base">dark_mode</span>
+            </button>
             <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
                 <span class="material-symbols-outlined text-base">login</span>
                 <span>Iniciar sesión</span>
@@ -98,7 +101,7 @@
         </div>
     </header>
 
-    <main class="flex-1 max-w-[1280px] mx-auto w-full px-6 py-8">
+    <main class="flex-1 max-w-5xl mx-auto w-full px-6 py-4">
         <!-- Breadcrumbs -->
         <div class="flex flex-wrap items-center gap-2 mb-4">
             <a class="text-[#499c65] dark:text-primary/70 text-sm font-medium" href="index.html">Entrenamiento</a>
@@ -107,41 +110,26 @@
         </div>
 
         <!-- Page Heading -->
-        <div class="flex flex-col gap-2 mb-8">
+        <div class="flex flex-col gap-2 mb-4">
             <h1 class="text-[#0d1c12] dark:text-white text-4xl font-black leading-tight tracking-tight">Captura de Imágenes</h1>
             <p class="text-[#499c65] dark:text-gray-400 text-base font-normal">Realiza los gestos frente a la cámara para alimentar el modelo en tiempo real.</p>
         </div>
 
         <!-- Workspace Layout -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <!-- Left: Video Feed & Controls (2/3) -->
-            <div class="lg:col-span-2 flex flex-col gap-6">
-                <!-- Media Player Container -->
-                <div class="bg-white dark:bg-background-dark border border-[#cee8d7] dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
-                    <!-- Camera Selection -->
-                    <div class="px-4 py-3 border-b border-[#cee8d7] dark:border-white/10 bg-[#f8fcf9] dark:bg-white/5">
-                        <div class="flex items-center gap-4">
-                            <span class="material-symbols-outlined text-primary text-sm">videocam</span>
-                            <label class="flex items-center gap-3 flex-1">
-                                <span class="text-[#0d1c12] dark:text-gray-200 text-sm font-semibold">Cámara:</span>
-                                <select id="cameraSelect" class="form-select rounded-lg text-[#0d1c12] dark:text-white border-[#cee8d7] dark:border-white/20 bg-white dark:bg-background-dark focus:ring-primary focus:border-primary text-sm flex-1 max-w-xs">
-                                    <option value="">Detectando cámaras...</option>
-                                </select>
-                            </label>
-                            <button id="refreshCameras" onclick="loadAvailableCameras()" class="text-primary hover:text-[#0bc148] transition-colors" title="Actualizar lista de cámaras">
-                                <span class="material-symbols-outlined text-sm">refresh</span>
-                            </button>
-                        </div>
-                    </div>
+            <div class="lg:col-span-2 flex flex-col gap-4">
+<!-- Media Player Container -->
+                    <div class="bg-white dark:bg-background-dark border border-[#cee8d7] dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
                     <div class="relative flex items-center justify-center bg-gray-200 dark:bg-gray-800 aspect-video group">
                         <!-- Video Feed -->
-                        <img id="videoFeed" src="" alt="Video feed" class="absolute inset-0 w-full h-full object-cover"/>
+                        <img id="videoFeed" src="" alt="Video de la cámara" class="absolute inset-0 w-full h-full object-cover"/>
                     </div>
                 </div>
 
                 <!-- Input Controls Area -->
-                <div class="bg-white dark:bg-background-dark p-6 rounded-xl border border-[#cee8d7] dark:border-white/10 shadow-sm">
-                    <div class="flex flex-col md:flex-row items-end gap-6">
+                <div class="bg-white dark:bg-background-dark p-4 rounded-xl border border-[#cee8d7] dark:border-white/10 shadow-sm">
+                    <div class="flex flex-col md:flex-row items-end gap-4">
                         <label class="flex flex-col flex-1 min-w-40">
                             <p class="text-[#0d1c12] dark:text-gray-200 text-sm font-semibold pb-2">Letra a entrenar</p>
                             <input id="gestureLetter" type="text" maxlength="1" class="form-input w-full rounded-xl text-[#0d1c12] dark:text-white border-[#cee8d7] dark:border-white/20 bg-transparent focus:ring-primary focus:border-primary h-14 px-4 text-xl font-bold uppercase" placeholder="Ej: A"/>
@@ -162,23 +150,23 @@
             </div>
 
             <!-- Right: Reference Panel (1/3) -->
-            <div class="flex flex-col gap-6">
+            <div class="flex flex-col gap-4">
                 <!-- Reference Example Card -->
-                <div class="bg-white dark:bg-background-dark p-6 rounded-xl border border-[#cee8d7] dark:border-white/10 shadow-sm h-full flex flex-col">
+                <div class="bg-white dark:bg-background-dark p-4 rounded-xl border border-[#cee8d7] dark:border-white/10 shadow-sm h-full flex flex-col">
                     <div class="flex items-center gap-2 mb-6 text-primary">
                         <span class="material-symbols-outlined">lightbulb</span>
                         <h3 class="font-bold text-[#0d1c12] dark:text-white uppercase tracking-wider text-sm">Ejemplo de gesto</h3>
                     </div>
                     
                     <!-- Gesture Reference Image -->
-                    <div class="rounded-xl bg-[#f8fcf9] dark:bg-white/5 border border-dashed border-[#499c65] dark:border-primary/30 p-4 mb-6 min-h-[200px] flex items-center justify-center">
+                    <div class="rounded-xl bg-[#f8fcf9] dark:bg-white/5 border border-dashed border-[#499c65] dark:border-primary/30 p-4 mb-4 min-h-[160px] flex items-center justify-center">
                         <img id="exampleImage" alt="Ejemplo de gesto" class="w-full h-auto rounded-lg grayscale hover:grayscale-0 transition-all duration-500" style="display: none;"/>
                         <div id="noExampleMsg" class="text-[#499c65] dark:text-gray-500 text-sm italic">Ingresa una letra para ver el ejemplo</div>
                     </div>
                     
                     <div class="flex-1 flex flex-col items-center justify-center">
                         <p class="text-xs font-bold text-[#499c65] uppercase mb-1">Letra actual</p>
-                        <span id="currentLetter" class="text-9xl font-black text-[#0d1c12] dark:text-white">-</span>
+                        <span id="currentLetter" class="text-6xl font-black text-[#0d1c12] dark:text-white">-</span>
                     </div>
                     
                     <div id="gestureDescription" class="mt-8 p-4 bg-primary/10 rounded-xl border border-primary/20" style="display: none;">
@@ -191,7 +179,7 @@
         </div>
 
         <!-- Bottom Navigation Bar -->
-        <div class="mt-12 flex items-center justify-between border-t border-[#e7f4eb] dark:border-white/10 pt-8 pb-12">
+        <div class="mt-6 flex items-center justify-between border-t border-[#e7f4eb] dark:border-white/10 pt-6 pb-6">
             <button onclick="stopCaptureAndNavigate()" class="px-8 py-3 rounded-xl border-2 border-[#cee8d7] dark:border-white/20 text-[#499c65] dark:text-gray-300 font-bold hover:bg-[#e7f4eb] dark:hover:bg-white/5 transition-colors flex items-center gap-2">
                 <span class="material-symbols-outlined">arrow_back</span>
                 REGRESAR
@@ -251,9 +239,22 @@
             showCustomAlert('Sesión cerrada', 'success');
         }
 
+        function updateThemeIcon(){
+            const icon = document.getElementById('themeIcon');
+            const isDark = document.documentElement.classList.contains('dark');
+            icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        }
+
+        function toggleTheme(){
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            updateThemeIcon();
+        }
+
         // Start the capture service and set up video feed
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
+            updateThemeIcon();
             if (!userId) {
                 showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
                 return;
@@ -307,35 +308,49 @@
             const gestureDesc = document.getElementById('gestureDescription');
             
             if (letter && validLetters.includes(letter)) {
-                // Try different filename patterns
-                const imagePatterns = [
-                    `/static/Letras/Ejemplo-${letter}.jpg`,
-                    `/static/Letras/Ejemplo-${letter}.png`,
-                    `/static/Letras/${letter}.jpg`,
-                    `/static/Letras/${letter}.png`
-                ];
+                // Imágenes del diccionario alojadas en la web (catbox.moe)
+                const imageUrls = {
+                    A: 'https://files.catbox.moe/sc6pbo.jpg',
+                    B: 'https://files.catbox.moe/bhkbsy.jpg',
+                    C: 'https://files.catbox.moe/pijitq.jpg',
+                    D: 'https://files.catbox.moe/tkv37j.jpg',
+                    E: 'https://files.catbox.moe/qxhp40.jpg',
+                    F: 'https://files.catbox.moe/7994wp.jpg',
+                    G: 'https://files.catbox.moe/9qnxu4.jpg',
+                    H: 'https://files.catbox.moe/7u8g48.jpg',
+                    I: 'https://files.catbox.moe/9zrt8p.jpg',
+                    J: 'https://files.catbox.moe/y4yezw.jpg',
+                    K: 'https://files.catbox.moe/1q1sck.jpg',
+                    L: 'https://files.catbox.moe/nsadrb.jpg',
+                    M: 'https://files.catbox.moe/fo0y2l.jpg',
+                    N: 'https://files.catbox.moe/5cc7w7.jpg',
+                    O: 'https://files.catbox.moe/av2er4.jpg',
+                    P: 'https://files.catbox.moe/fa3t9r.jpg',
+                    Q: 'https://files.catbox.moe/ve3b14.jpg',
+                    R: 'https://files.catbox.moe/u4xn5c.jpg',
+                    S: 'https://files.catbox.moe/qzwmvf.jpg',
+                    T: 'https://files.catbox.moe/ci8cmj.jpg',
+                    U: 'https://files.catbox.moe/zh9iq0.jpg',
+                    V: 'https://files.catbox.moe/xvpvqb.jpg',
+                    W: 'https://files.catbox.moe/am7c6r.jpg',
+                    X: 'https://files.catbox.moe/xhsd88.jpg',
+                    Y: 'https://files.catbox.moe/k4176a.jpg',
+                    Z: 'https://files.catbox.moe/4i2pfl.jpg'
+                };
                 
                 letterDisplay.textContent = letter;
                 letterSmall.textContent = letter;
-                exampleImg.style.display = 'block';
-                noExampleMsg.style.display = 'none';
                 gestureDesc.style.display = 'block';
                 
-                let patternIndex = 0;
-                const tryPattern = () => {
-                    if (patternIndex >= imagePatterns.length) {
-                        console.warn(`No image found for letter ${letter}`);
-                        exampleImg.style.display = 'none';
-                        noExampleMsg.style.display = 'block';
-                        return;
-                    }
-                    
-                    exampleImg.src = imagePatterns[patternIndex];
-                    patternIndex++;
-                };
-                
-                exampleImg.onerror = tryPattern;
-                tryPattern();
+                if (imageUrls[letter]) {
+                    exampleImg.style.display = 'block';
+                    noExampleMsg.style.display = 'none';
+                    exampleImg.src = imageUrls[letter];
+                } else {
+                    console.warn(`No image found for letter ${letter}`);
+                    exampleImg.style.display = 'none';
+                    noExampleMsg.style.display = 'block';
+                }
             } else {
                 letterDisplay.textContent = '-';
                 letterSmall.textContent = '-';
@@ -459,70 +474,6 @@
             fetch(`/api/python/capture-camera/close`, { method: 'POST' })
                 .finally(() => { window.location.href = 'index.html'; });
         }
-
-        // Camera selection functions
-        async function loadAvailableCameras() {
-            try {
-                const response = await fetch('/api/python/capture-cameras');
-                const data = await response.json();
-                
-                const select = document.getElementById('cameraSelect');
-                select.innerHTML = '';
-                
-                if (data.cameras && data.cameras.length > 0) {
-                    data.cameras.forEach(camera => {
-                        const option = document.createElement('option');
-                        option.value = camera.index;
-                        option.textContent = camera.name;
-                        if (camera.index === data.current) {
-                            option.selected = true;
-                        }
-                        select.appendChild(option);
-                    });
-                } else {
-                    select.innerHTML = '<option value="">No hay cámaras disponibles</option>';
-                }
-            } catch (error) {
-                console.error('Error loading cameras:', error);
-                document.getElementById('cameraSelect').innerHTML = '<option value="">Error cargando cámaras</option>';
-            }
-        }
-
-        async function onCameraChange() {
-            const select = document.getElementById('cameraSelect');
-            const selectedIndex = select.value;
-            
-            if (selectedIndex === '') return;
-            
-            try {
-                showNotification(`Cambiando a cámara ${selectedIndex}...`);
-                
-                const response = await fetch(`/api/python/capture-camera/set/${selectedIndex}`, {
-                    method: 'POST'
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification(`Cámara ${selectedIndex} seleccionada correctamente`);
-                    // Reload video feed after changing camera
-                    setTimeout(() => {
-                        isStreaming = false;
-                        loadVideoFeed();
-                    }, 500);
-                } else {
-                    showNotification(`Error: ${result.error}`);
-                }
-            } catch (error) {
-                console.error('Error setting camera:', error);
-                showNotification('Error al cambiar la cámara');
-            }
-        }
-
-        // Initialize camera selector on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAvailableCameras();
-            document.getElementById('cameraSelect').addEventListener('change', onCameraChange);
-        });
     </script>
 </body>
 </html>

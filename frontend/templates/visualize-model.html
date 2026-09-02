@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>SignLink AI - Traducción en Tiempo Real</title>
+    <title>Traducción en Tiempo Real - Inteligencia Artificial</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -85,6 +85,9 @@
             <button class="px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold">Visualización</button>
         </nav>
         <div class="flex items-center gap-3 ml-auto">
+            <button id="darkModeBtn" onclick="toggleTheme()" class="flex size-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors" title="Modo oscuro">
+                <span id="themeIcon" class="material-symbols-outlined text-base">dark_mode</span>
+            </button>
             <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
                 <span class="material-symbols-outlined text-base">login</span>
                 <span>Iniciar sesión</span>
@@ -103,37 +106,28 @@
     </header>
 
     <!-- Main Content -->
-    <main class="relative flex-1 flex flex-col items-center justify-center p-6 bg-background-light dark:bg-background-dark">
+    <main class="relative flex-1 flex flex-col items-center justify-center p-4 bg-background-light dark:bg-background-dark">
         <!-- Headline Section (Dynamic Overlay Concept) -->
-        <div class="absolute top-4 z-20 w-full max-w-2xl px-4 pointer-events-none">
-            <div class="glass-panel rounded-xl p-6 shadow-2xl flex flex-col items-center border-t-4 border-t-primary">
-                <p class="text-[#499c65] dark:text-primary/80 text-xs font-bold uppercase tracking-widest mb-2">Traducción en Tiempo Real</p>
-                <h1 id="gestureDisplay" class="text-primary tracking-tight text-[56px] font-bold leading-none glow-text">-</h1>
-                <div class="w-full h-1 bg-black/5 dark:bg-white/10 mt-4 rounded-full overflow-hidden">
-                    <div class="h-full bg-primary w-3/4 shadow-[0_0_10px_rgba(13,242,89,0.5)]"></div>
-                </div>
-                <p class="text-xs text-[#0d1c12]/60 dark:text-white/60 mt-2">Sistema de reconocimiento activo</p>
+        <div class="absolute top-4 z-20 w-full max-w-sm px-4 pointer-events-none">
+            <div class="glass-panel rounded-xl px-6 py-3 shadow-2xl flex flex-col items-center border-t-4 border-t-primary">
+                <p class="text-[#499c65] dark:text-primary/80 text-xs font-bold uppercase tracking-widest">Traducción</p>
+                <h1 id="gestureDisplay" class="text-primary tracking-tight text-4xl font-bold leading-none glow-text mt-1">-</h1>
             </div>
         </div>
 
-        <!-- Video Feed Container -->
-        <div class="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-white/5 dark:border-white/10">
-            <!-- Camera Selection Panel -->
-            <div class="absolute top-4 right-4 z-10">
-                <div class="glass-panel px-4 py-3 rounded-lg shadow-lg">
-                    <div class="flex items-center gap-3">
-                        <span class="material-symbols-outlined text-primary text-sm">videocam</span>
-                        <select id="cameraSelect" class="form-select rounded-lg text-[#0d1c12] dark:text-white border-[#cee8d7] dark:border-white/20 bg-white/80 dark:bg-background-dark/80 focus:ring-primary focus:border-primary text-sm">
-                            <option value="">Detectando cámaras...</option>
-                        </select>
-                        <button id="refreshCameras" onclick="loadAvailableCameras()" class="text-primary hover:text-[#0bc148] transition-colors" title="Actualizar cámaras">
-                            <span class="material-symbols-outlined text-sm">refresh</span>
-                        </button>
-                    </div>
-                </div>
+                <!-- Selector de modelo: base vs personal -->
+        <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-500 dark:text-gray-400">Modelo:</span>
+            <div class="flex rounded-xl bg-white/80 dark:bg-white/5 border border-gray-200 dark:border-white/10 p-1 gap-1 shadow-xl">
+                <button id="modelUserBtn" onclick="selectModel('user')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors">Mi modelo</button>
+                <button id="modelBaseBtn" onclick="selectModel('base')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors">Base</button>
             </div>
+        </div>
+
+<!-- Video Feed Container -->
+        <div class="relative w-full max-w-3xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-white/5 dark:border-white/10">
             <!-- Camera Feed -->
-            <img id="videoFeed" src="" alt="Video feed" class="absolute inset-0 w-full h-full object-cover"/>
+            <img id="videoFeed" src="" alt="Video de la cámara" class="absolute inset-0 w-full h-full object-cover"/>
         </div>
 
         <!-- Floating Navigation -->
@@ -145,7 +139,7 @@
         </div>
 
         <!-- Meta Text Footer -->
-        <div class="mt-8 text-center max-w-lg">
+        <div class="mt-4 text-center max-w-lg">
             <p class="text-[#499c65] text-sm font-medium leading-normal">
                 Asegúrate de que tu mano esté bien iluminada y dentro del recuadro central para una detección precisa.
             </p>
@@ -164,6 +158,58 @@
     <script>
         const userId = new URLSearchParams(window.location.search).get('userId') || localStorage.getItem('userId');
         let isStreaming = false;
+
+let modelChoice = localStorage.getItem('modelChoice') || 'user';
+
+function selectModel(mode) {
+    if (mode === modelChoice) return;
+    modelChoice = mode;
+    localStorage.setItem('modelChoice', modelChoice);
+    updateModelToggle();
+    stopGesturePolling();
+    isStreaming = false;
+    fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
+        .finally(() => {
+            initRecognition();
+        });
+}
+
+function updateModelToggle() {
+    const userBtn = document.getElementById('modelUserBtn');
+    const baseBtn = document.getElementById('modelBaseBtn');
+    if (!userBtn || !baseBtn) return;
+    const active = 'px-3 py-1.5 text-xs font-bold rounded-lg transition-colors bg-primary text-white shadow';
+    const inactive = 'px-3 py-1.5 text-xs font-bold rounded-lg transition-colors text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10';
+    userBtn.className = modelChoice === 'user' ? active : inactive;
+    baseBtn.className = modelChoice === 'base' ? active : inactive;
+}
+
+function initRecognition() {
+    if (!userId) {
+        return;
+    }
+    showNotification('Liberando camara de captura...');
+    fetch(`/api/python/capture-camera/close`, { method: 'POST' })
+        .then(() => openRecognitionCamera())
+        .catch(() => openRecognitionCamera());
+}
+
+function openRecognitionCamera() {
+    showNotification('Abriendo camara de reconocimiento...');
+    fetch(`/api/python/recognition-camera/open?userId=${userId}&model=${modelChoice}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(modelChoice === 'base' ? 'Modelo base listo. Iniciando stream...' : 'Modelo personal listo. Iniciando stream...');
+                setTimeout(() => { loadVideoFeed(); }, 800);
+            } else {
+                showNotification('Error: ' + (data.message || 'No se pudo abrir la camara'));
+            }
+        })
+        .catch(() => {
+            showNotification('No se pudo abrir la camara de reconocimiento.');
+        });
+}
 
         function checkAuth() {
             const uid = localStorage.getItem('userId');
@@ -221,7 +267,7 @@
             const img = document.getElementById('videoFeed');
             isStreaming = true;
             // Pass userId to ensure the correct model is used
-            img.src = `/api/python/recognize-video-feed?userId=${userId}&model_user=${userId}&t=${Date.now()}`;
+            img.src = `/api/python/recognize-video-feed?userId=${userId}&model_user=${modelChoice === 'base' ? 'base' : userId}&t=${Date.now()}`;
             img.onload = () => {
                 console.log('Streaming de reconocimiento iniciado');
                 startGesturePolling(); // Start polling for gestures
@@ -233,63 +279,27 @@
             };
         }
 
+        function updateThemeIcon(){
+            const icon = document.getElementById('themeIcon');
+            const isDark = document.documentElement.classList.contains('dark');
+            icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        }
+
+        function toggleTheme(){
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            updateThemeIcon();
+        }
+
         // Initialize recognition service and load video feed
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
-            if (!userId) {
-                showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
-                return;
-            }
-
-            // First, close the capture camera to free the device
-            showNotification('Liberando cámara de captura...');
-            fetch(`/api/python/capture-camera/close`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    console.log('Capture camera closed:', data.message);
-                    showNotification('Abriendo cámara de reconocimiento...');
-                    // Wait a moment for camera to be released
-                    setTimeout(() => {
-                        // Open recognition camera with userId
-                        fetch(`/api/python/recognition-camera/open?userId=${userId}`, { method: 'POST' })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    showNotification('Cámara de reconocimiento lista. Iniciando stream...');
-                                    setTimeout(() => { loadVideoFeed(); }, 800);
-                                } else {
-                                    showNotification('Error: ' + (data.message || 'No se pudo abrir la cámara'));
-                                    console.error('Error details:', data);
-                                }
-                            })
-                            .catch(err => {
-                                console.error('Error opening recognition camera:', err);
-                                showNotification('No se pudo abrir la cámara de reconocimiento.');
-                            });
-                    }, 500);
-                })
-                .catch(err => {
-                    console.warn('Could not close capture camera:', err);
-                    showNotification('Abriendo cámara de reconocimiento...');
-                    // Continue anyway and try to start recognition
-                    fetch(`/api/python/recognition-camera/open?userId=${userId}`, { method: 'POST' })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                showNotification('Cámara de reconocimiento lista. Iniciando stream...');
-                                setTimeout(() => { loadVideoFeed(); }, 800);
-                            } else {
-                                showNotification('Error: ' + (data.message || 'No se pudo abrir la cámara'));
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Error opening recognition camera:', err);
-                            showNotification('No se pudo abrir la cámara de reconocimiento.');
-                        });
-                });
+            updateThemeIcon();
+            updateModelToggle();
+            initRecognition();
         });
 
-        // Poll for detected gestures
+// Poll for detected gestures
         let gestureCheckInterval = null;
         let currentGestureTimeout = null;
         
@@ -339,73 +349,6 @@
             fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
                 .finally(() => { window.location.href = 'index.html'; });
         }
-
-        // Camera selection functions
-        async function loadAvailableCameras() {
-            try {
-                const response = await fetch('/api/python/recognition-cameras');
-                const data = await response.json();
-                
-                const select = document.getElementById('cameraSelect');
-                select.innerHTML = '';
-                
-                if (data.cameras && data.cameras.length > 0) {
-                    data.cameras.forEach(camera => {
-                        const option = document.createElement('option');
-                        option.value = camera.index;
-                        option.textContent = camera.name;
-                        if (camera.index === data.current) {
-                            option.selected = true;
-                        }
-                        select.appendChild(option);
-                    });
-                } else {
-                    select.innerHTML = '<option value="">No hay cámaras disponibles</option>';
-                }
-            } catch (error) {
-                console.error('Error loading cameras:', error);
-                document.getElementById('cameraSelect').innerHTML = '<option value="">Error cargando cámaras</option>';
-            }
-        }
-
-        async function onCameraChange() {
-            const select = document.getElementById('cameraSelect');
-            const selectedIndex = select.value;
-            
-            if (selectedIndex === '') return;
-            
-            try {
-                // Stop current recognition
-                stopGesturePolling();
-                
-                showCustomAlert(`Cambiando a cámara ${selectedIndex}...`, 'info');
-                
-                const response = await fetch(`/api/python/recognition-camera/set/${selectedIndex}`, {
-                    method: 'POST'
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    showCustomAlert(`Cámara ${selectedIndex} seleccionada correctamente`, 'success');
-                    // Reload video feed and restart recognition after changing camera
-                    setTimeout(() => {
-                        loadVideoFeed();
-                        setTimeout(startGesturePolling, 1000);
-                    }, 500);
-                } else {
-                    showCustomAlert(`Error: ${result.error}`, 'error');
-                }
-            } catch (error) {
-                console.error('Error setting camera:', error);
-                showCustomAlert('Error al cambiar la cámara', 'error');
-            }
-        }
-
-        // Initialize camera selector on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAvailableCameras();
-            document.getElementById('cameraSelect').addEventListener('change', onCameraChange);
-        });
     </script>
 </body>
 </html>
