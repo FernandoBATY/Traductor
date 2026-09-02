@@ -1,10 +1,8 @@
--- Script simplificado para crear solo la tabla requerida actualmente
--- Ejecutar este script en MySQL después de crear la base de datos 'usuarios'
+-- Script para crear la tabla de usuarios en Aiven MySQL (defaultdb)
+-- La conexion ya apunta a la base 'defaultdb' (configurada via DB_NAME).
+-- Ejecutar este script en la consola SQL de Aiven/auth localmente con SSL.
+-- No usar 'USE usuarios;' aqui: Aiven entrega 'defaultdb'.
 
--- IMPORTANTE: Seleccionar la base de datos primero
-USE usuarios;
-
--- Tabla de usuarios para el sistema de autenticación (ÚNICA TABLA REQUERIDA)
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuario VARCHAR(50) NOT NULL UNIQUE,
@@ -16,12 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_usuario (usuario)
 );
 
--- Crear un usuario de ejemplo (opcional - solo para pruebas)
--- La contraseña es 'password123' hasheada con bcrypt
-INSERT INTO users (usuario, email, contraseña) VALUES 
+-- Usuario de ejemplo (opcional, solo pruebas) - contrasena 'password123' con bcrypt
+INSERT INTO users (usuario, email, contraseña) VALUES
 ('admin', 'admin@test.com', '$2a$10$7wVHb.Td.lSkTnhyOr2MO.P1J.k3c.kJH8FzmeXWjR5mQk3vld4X.')
 ON DUPLICATE KEY UPDATE usuario = VALUES(usuario);
-
--- Verificar que se creó correctamente
-SELECT * FROM users;
-DESCRIBE users;

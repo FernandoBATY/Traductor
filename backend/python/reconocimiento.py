@@ -427,6 +427,7 @@ def predecir():
     return {"success": True, "gesture": gesto_actual, "top": top3, "confidence": confianza}, 200
 
 @app.route('/api/health')
+@app.route('/health')
 def health():
     print("Health check requested.")
     return "Flask server is running.", 200
