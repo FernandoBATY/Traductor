@@ -457,26 +457,31 @@ router.get('/start-recognition', async (req, res) => {
 router.post('/recognition-camera/open', async (req, res) => {
     try {
         const userId = req.query.userId || req.body.userId;
+        const model = (req.query.model || req.body.model || 'user').toString().toLowerCase();
         if (!userId) {
             return res.status(400).json({ success: false, message: 'userId parameter required' });
         }
         
-        // First, load the model for this user
+        // 'base' => modelo compartido; 'user' => modelo del usuario (con respaldo al base)
+        const modelUser = model === 'base' ? 'base' : userId;
+        
+        // Try to load the model for this user (does not block the camera if missing)
+        let modelLoaded = true;
         try {
-            await axios.post(`http://localhost:5000/api/load-model?userId=${userId}`);
-            console.log(`Model loaded for user ${userId}`);
+            await axios.post(`http://localhost:5000/api/load-model?userId=${modelUser}`);
+            console.log(`Model loaded for user ${modelUser} (seleccion: ${model})`);
         } catch (loadError) {
-            console.error('Error loading model:', loadError.response?.data || loadError.message);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Failed to load model. Train the model first.',
-                error: loadError.response?.data 
-            });
+            modelLoaded = false;
+            console.warn(`Model not loaded for user ${modelUser}:`, loadError.response?.data || loadError.message);
         }
         
-        // Then open the camera
+        // Open the camera regardless of model availability
         const r = await axios.post('http://localhost:5000/api/camera/open');
-        res.json({ success: true, message: r.data });
+        res.json({ 
+            success: true, 
+            message: modelLoaded ? r.data : 'Cámara abierta, pero aún no hay modelo entrenado para este usuario.',
+            modelLoaded: modelLoaded
+        });
     } catch (e) {
         console.error('Error opening recognition camera:', e.message);
         res.status(500).json({ success: false, message: 'Failed to open recognition camera.' });
