@@ -6,6 +6,8 @@ const httpProxy = require('http-proxy');
 const { spawn } = require('child_process');
 const axios = require('axios');
 const util = require('util');
+const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://localhost:5000';
+const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://localhost:5001';
 
 const app = express();
 
@@ -62,7 +64,7 @@ const proxy = httpProxy.createProxyServer();
 // Proxy requests to /api/video_feed to the Flask server
 app.get('/api/video_feed', async (req, res) => {
     try {
-        proxy.web(req, res, { target: 'http://localhost:5000/video_feed' }); // Ensure correct target
+        proxy.web(req, res, { target: `${FLASK_REC_URL}/video_feed` }); // Ensure correct target
     } catch (error) {
         console.error('Error proxying video feed:', error.message);
         res.status(500).send('Error proxying video feed.');
@@ -72,7 +74,7 @@ app.get('/api/video_feed', async (req, res) => {
 // Proxy requests to /api/health to the Flask server
 app.get('/api/health', async (req, res) => {
     try {
-        proxy.web(req, res, { target: 'http://localhost:5000/health' }); // Ensure correct target
+        proxy.web(req, res, { target: `${FLASK_REC_URL}/health` }); // Ensure correct target
     } catch (error) {
         console.error('Error proxying health check:', error.message);
         res.status(500).send('Error proxying health check.');
@@ -82,7 +84,7 @@ app.get('/api/health', async (req, res) => {
 // Proxy requests to /api/start-reconocim iento to the Flask server
 app.get('/api/start-reconocimiento', async (req, res) => {
     try {
-        const response = await axios.get('http://localhost:5000/visualize-model'); // Correctly forward to Flask
+        const response = await axios.get(`${FLASK_REC_URL}/visualize-model`); // Correctly forward to Flask
         res.send(response.data);
     } catch (error) {
         console.error('Error proxying start-reconocimiento:', error.message);
@@ -112,14 +114,20 @@ function startPythonService(scriptPath, env = {}) {
     }
 }
 
-// Start both services on server boot (attached so they exit with Node)
-capturaProc = startPythonService(capturaImagenesPath);
-reconocimientoProc = startPythonService(reconocimientoPath, { USER_ID: '1' });
+// Start both services on server boot (attached so they exit with Node).
+// En despliegue (URLs externas configuradas) los servicios Python corren aparte.
+const pythonServicesExternos = !!(process.env.FLASK_REC_URL || process.env.FLASK_CAPTURE_URL);
+if (pythonServicesExternos) {
+    console.log('Servicios Python externos configurados, no se propagan procesos locales.');
+} else {
+    capturaProc = startPythonService(capturaImagenesPath);
+    reconocimientoProc = startPythonService(reconocimientoPath, { USER_ID: '1' });
+}
 
 async function gracefulShutdown() {
     console.log('Shutting down: closing cameras and stopping Python services...');
-    try { await axios.post('http://localhost:5001/camera/close'); } catch {}
-    try { await axios.post('http://localhost:5000/api/camera/close'); } catch {}
+    try { await axios.post(`${FLASK_CAPTURE_URL}/camera/close`); } catch {}
+    try { await axios.post(`${FLASK_REC_URL}/api/camera/close`); } catch {}
     try { capturaProc && capturaProc.kill(); } catch {}
     try { reconocimientoProc && reconocimientoProc.kill(); } catch {}
 }

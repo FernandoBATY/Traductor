@@ -24,7 +24,7 @@ function runPythonScript(script) {
         showCustomAlert('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.', 'warning');
         return;
     }
-    fetch(`http://localhost:5000/run-script?script=${script}&userId=${userId}`)
+    fetch(`/api/run-script?script=${script}&userId=${userId}`)
         .then(response => response.json())
         .then(data => showCustomAlert(data.message, 'info'))
         .catch(error => console.error('Error:', error));

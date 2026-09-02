@@ -121,9 +121,10 @@
             <div class="lg:col-span-2 flex flex-col gap-4">
 <!-- Media Player Container -->
                     <div class="bg-white dark:bg-background-dark border border-[#cee8d7] dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
-                    <div class="relative flex items-center justify-center bg-gray-200 dark:bg-gray-800 aspect-video group">
-                        <!-- Video Feed -->
-                        <img id="videoFeed" src="" alt="Video de la cámara" class="absolute inset-0 w-full h-full object-cover"/>
+<div class="relative flex items-center justify-center bg-gray-200 dark:bg-gray-800 aspect-video group">
+                        <!-- Video Feed (getUserMedia, espejado) -->
+                        <video id="videoFeed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover -scale-x-100"></video>
+                        <canvas id="captureCanvas" class="hidden"></canvas>
                     </div>
                 </div>
 
@@ -199,8 +200,7 @@
     <script src="/js/dashboard.js"></script>
     <script>
         const userId = new URLSearchParams(window.location.search).get('userId') || localStorage.getItem('userId');
-        let captureServiceStarted = false;
-        let isStreaming = false;
+        let videoEl = null;
         const validLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
         function checkAuth() {
@@ -277,22 +277,12 @@
             // Load initial image counter
             updateCaptureCounter();
             
-            // Ensure recognition camera is closed, then open capture camera
-            showNotification('Preparando cámara de captura...');
-            fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
-                .finally(() => {
-                    fetch(`/api/python/capture-camera/open`, { method: 'POST' })
-                        .then(() => {
-                            showNotification('Cámara de captura lista. Iniciando stream...');
-                            setTimeout(() => { loadVideoFeed(); }, 800);
-                        })
-                        .catch(() => {
-                            showNotification('No se pudo abrir la cámara de captura.');
-                        });
-                });
+            // Iniciar cámara del navegador (getUserMedia)
+            showNotification('Solicitando acceso a la cámara...');
+            startCamera();
 
-            // Stop capture service when leaving the page
-            const closeCapture = () => fetch(`/api/python/capture-camera/close`, { method: 'POST' }).catch(() => {});
+            // Detener cámara al salir de la página
+            const closeCapture = () => stopCamera();
             window.addEventListener('beforeunload', closeCapture);
             window.addEventListener('pagehide', closeCapture);
             document.addEventListener('visibilitychange', () => {
@@ -360,19 +350,32 @@
             }
         }
 
-        function loadVideoFeed() {
-            if (isStreaming) return;
-            const img = document.getElementById('videoFeed');
-            isStreaming = true;
-            img.src = `/api/python/capture-video-feed?userId=${userId}&t=${Date.now()}`;
-            img.onload = () => {
-                console.log('Streaming de captura iniciado');
-            };
-            img.onerror = () => {
-                console.warn('Fallo del stream, reintentando...');
-                isStreaming = false;
-                setTimeout(loadVideoFeed, 1500);
-            };
+        function startCamera() {
+            const video = document.getElementById('videoFeed');
+            if (!video) return;
+            if (video.srcObject) return;
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showNotification('getUserMedia no soportado por este navegador.');
+                return;
+            }
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    videoEl = video;
+                    video.srcObject = stream;
+                    video.play().catch(() => {});
+                    showNotification('Cámara lista. Escribe una letra y captura tu gesto.');
+                })
+                .catch(err => {
+                    console.error('getUserMedia error:', err);
+                    showNotification('No se pudo acceder a la cámara: ' + (err.message || 'Permiso denegado'));
+                });
+        }
+
+        function stopCamera() {
+            if (videoEl && videoEl.srcObject) {
+                videoEl.srcObject.getTracks().forEach(t => t.stop());
+                videoEl.srcObject = null;
+            }
         }
 
         function showNotification(message) {
@@ -407,22 +410,45 @@
                 return;
             }
 
-            fetch(`/api/python/capture-image?userId=${userId}&letter=${letter}`, {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(`Imagen para la letra "${letter}" capturada.`);
-                    updateCaptureCounter();
-                } else {
-                    showNotification('Error: ' + data.message);
+            const canvas = document.getElementById('captureCanvas');
+            const video = document.getElementById('videoFeed');
+            if (!canvas || !video || !video.srcObject) {
+                showNotification('Cámara no disponible. Revisa los permisos del navegador.');
+                return;
+            }
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            // Des-espejar: guardar la imagen en orientación normal
+            ctx.save();
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            canvas.toBlob(blob => {
+                if (!blob) {
+                    showNotification('Error al generar la imagen.');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error al capturar la imagen:', error);
-                showNotification('Ocurrió un error al capturar la imagen.');
-            });
+                fetch(`/api/python/capture-image?userId=${userId}&letter=${letter}`, {
+                    method: 'POST',
+                    body: blob
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(`Imagen para la letra "${letter}" capturada.`);
+                        updateCaptureCounter();
+                    } else {
+                        showNotification('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al capturar la imagen:', error);
+                    showNotification('Ocurrió un error al capturar la imagen.');
+                });
+            }, 'image/jpeg', 0.92);
         }
 
         function updateCaptureCounter() {
@@ -471,8 +497,8 @@
         }
 
         function stopCaptureAndNavigate() {
-            fetch(`/api/python/capture-camera/close`, { method: 'POST' })
-                .finally(() => { window.location.href = 'index.html'; });
+            stopCamera();
+            window.location.href = 'index.html';
         }
     </script>
 </body>

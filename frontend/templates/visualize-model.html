@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
         <script src="../js/custom-alert.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14"></script>
     <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
     <script id="tailwind-config">
         tailwind.config = {
@@ -126,8 +127,9 @@
 
 <!-- Video Feed Container -->
         <div class="relative w-full max-w-3xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-white/5 dark:border-white/10">
-            <!-- Camera Feed -->
-            <img id="videoFeed" src="" alt="Video de la cámara" class="absolute inset-0 w-full h-full object-cover"/>
+            <!-- Camera Feed (getUserMedia en el navegador) -->
+            <video id="videoFeed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+            <canvas id="overlayCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
         </div>
 
         <!-- Floating Navigation -->
@@ -161,17 +163,115 @@
 
 let modelChoice = localStorage.getItem('modelChoice') || 'user';
 
+// --- MediaPipe Hands en el navegador ---
+let handLandmarker = null;
+let videoEl = null;
+let overlayCtx = null;
+let detectionLoopRunning = false;
+let lastPredict = 0;
+const PREDICT_INTERVAL = 150; // ms
+
+async function initHandTracker() {
+    const visionUrl = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
+    const modelPath = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+    const { FilesetResolver, HandLandmarker } = window;
+    if (!FilesetResolver || !HandLandmarker) {
+        showNotification('Error: MediaPipe no se cargó (revisa tu conexión a internet).');
+        return;
+    }
+    const vision = await FilesetResolver.forVisionTasks(visionUrl);
+    try {
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: { modelAssetPath: modelPath, delegate: 'GPU' },
+            runningMode: 'VIDEO',
+            numHands: 1
+        });
+    } catch (e) {
+        console.warn('GPU no disponible, usando CPU.', e);
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: { modelAssetPath: modelPath, delegate: 'CPU' },
+            runningMode: 'VIDEO',
+            numHands: 1
+        });
+    }
+    console.log('HandLandmarker listo');
+}
+
+function coordsDesdeLandmarks(lm) {
+    const pts = [];
+    for (const p of lm) {
+        const z = (p.z != null && !isNaN(p.z)) ? p.z : 0;
+        pts.push([p.x, p.y, z]);
+    }
+    return pts;
+}
+
+function normalizarLandmarks(coords) {
+    // Misma fórmula que backend/python/gestos_utils.py (_normalizar_puntos)
+    const mu = coords[0], base = coords[9];
+    const dx = base[0] - mu[0], dy = base[1] - mu[1], dz = base[2] - mu[2];
+    const ref = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6;
+    const v = [];
+    for (const p of coords) { v.push((p[0] - mu[0]) / ref, (p[1] - mu[1]) / ref, (p[2] - mu[2]) / ref); }
+    return v;
+}
+
+const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+
+function drawLandmarks(coords) {
+    if (!overlayCtx) return;
+    const cv = overlayCtx.canvas;
+    overlayCtx.clearRect(0, 0, cv.width, cv.height);
+    if (!coords) return;
+    const w = cv.width, h = cv.height;
+    const pts = coords.map(p => [p[0] * w, p[1] * h]);
+    overlayCtx.strokeStyle = '#0df259';
+    overlayCtx.lineWidth = 3;
+    for (const [a, b] of HAND_CONNECTIONS) {
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(pts[a][0], pts[a][1]);
+        overlayCtx.lineTo(pts[b][0], pts[b][1]);
+        overlayCtx.stroke();
+    }
+    overlayCtx.fillStyle = '#0df259';
+    for (const [x, y] of pts) {
+        overlayCtx.beginPath();
+        overlayCtx.arc(x, y, 4, 0, Math.PI * 2);
+        overlayCtx.fill();
+    }
+}
+
+function detectLoop() {
+    if (!detectionLoopRunning) return;
+    if (videoEl && videoEl.readyState >= 2 && handLandmarker) {
+        const ahora = performance.now();
+        try {
+            const res = handLandmarker.detectForVideo(videoEl, ahora);
+            if (res.landmarks && res.landmarks.length > 0) {
+                const coords = coordsDesdeLandmarks(res.landmarks[0]);
+                drawLandmarks(coords);
+                if (ahora - lastPredict > PREDICT_INTERVAL) {
+                    lastPredict = ahora;
+                    fetch('/api/python/predecir', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ coords })
+                    }).catch(() => {});
+                }
+            } else {
+                drawLandmarks(null);
+            }
+        } catch (e) { /* ignorar errores por frame */ }
+    }
+    requestAnimationFrame(detectLoop);
+}
+
 function selectModel(mode) {
     if (mode === modelChoice) return;
     modelChoice = mode;
     localStorage.setItem('modelChoice', modelChoice);
     updateModelToggle();
-    stopGesturePolling();
-    isStreaming = false;
-    fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
-        .finally(() => {
-            initRecognition();
-        });
+    loadModel();
 }
 
 function updateModelToggle() {
@@ -184,31 +284,61 @@ function updateModelToggle() {
     baseBtn.className = modelChoice === 'base' ? active : inactive;
 }
 
-function initRecognition() {
-    if (!userId) {
-        return;
-    }
-    showNotification('Liberando camara de captura...');
-    fetch(`/api/python/capture-camera/close`, { method: 'POST' })
-        .then(() => openRecognitionCamera())
-        .catch(() => openRecognitionCamera());
-}
-
-function openRecognitionCamera() {
-    showNotification('Abriendo camara de reconocimiento...');
-    fetch(`/api/python/recognition-camera/open?userId=${userId}&model=${modelChoice}`, { method: 'POST' })
-        .then(response => response.json())
+function loadModel() {
+    if (!userId) return Promise.resolve();
+    return fetch(`/api/python/load-model?userId=${userId}&model=${modelChoice}`, { method: 'POST' })
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showNotification(modelChoice === 'base' ? 'Modelo base listo. Iniciando stream...' : 'Modelo personal listo. Iniciando stream...');
-                setTimeout(() => { loadVideoFeed(); }, 800);
+                showNotification(data.modelLoaded
+                    ? 'Modelo listo para reconocer.'
+                    : 'Sin modelo propio: se usará el modelo base al pausar el gesto.');
             } else {
-                showNotification('Error: ' + (data.message || 'No se pudo abrir la camara'));
+                showNotification('Error: ' + (data.message || 'No se pudo cargar el modelo'));
             }
+            return data;
         })
-        .catch(() => {
-            showNotification('No se pudo abrir la camara de reconocimiento.');
+        .catch(() => showNotification('No se pudo cargar el modelo.'));
+}
+
+function startCamera() {
+    const video = document.getElementById('videoFeed');
+    const canvas = document.getElementById('overlayCanvas');
+    if (!video || !canvas) return;
+    if (video.srcObject) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showNotification('getUserMedia no soportado por este navegador.');
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            videoEl = video;
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                overlayCtx = canvas.getContext('2d');
+                isStreaming = true;
+                detectionLoopRunning = true;
+                if (!gestureCheckInterval) startGesturePolling();
+                requestAnimationFrame(detectLoop);
+            };
+            showNotification('Cámara lista.');
+        })
+        .catch(err => {
+            console.error('getUserMedia error:', err);
+            showNotification('No se pudo acceder a la cámara: ' + (err.message || 'Permiso denegado'));
         });
+}
+
+function stopCamera() {
+    detectionLoopRunning = false;
+    isStreaming = false;
+    if (videoEl && videoEl.srcObject) {
+        videoEl.srcObject.getTracks().forEach(t => t.stop());
+        videoEl.srcObject = null;
+    }
+    if (overlayCtx) overlayCtx.clearRect(0, 0, overlayCtx.canvas.width, overlayCtx.canvas.height);
 }
 
         function checkAuth() {
@@ -262,23 +392,6 @@ function openRecognitionCamera() {
             }, 3000);
         }
 
-        function loadVideoFeed() {
-            if (isStreaming) return;
-            const img = document.getElementById('videoFeed');
-            isStreaming = true;
-            // Pass userId to ensure the correct model is used
-            img.src = `/api/python/recognize-video-feed?userId=${userId}&model_user=${modelChoice === 'base' ? 'base' : userId}&t=${Date.now()}`;
-            img.onload = () => {
-                console.log('Streaming de reconocimiento iniciado');
-                startGesturePolling(); // Start polling for gestures
-            };
-            img.onerror = () => {
-                console.warn('Fallo del stream, reintentando...');
-                isStreaming = false;
-                setTimeout(loadVideoFeed, 1500);
-            };
-        }
-
         function updateThemeIcon(){
             const icon = document.getElementById('themeIcon');
             const isDark = document.documentElement.classList.contains('dark');
@@ -291,12 +404,14 @@ function openRecognitionCamera() {
             updateThemeIcon();
         }
 
-        // Initialize recognition service and load video feed
+        // Initialize MediaPipe, modelo y cámara del navegador
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             updateThemeIcon();
             updateModelToggle();
-            initRecognition();
+            initHandTracker();
+            loadModel();
+            setTimeout(() => startCamera(), 300);
         });
 
 // Poll for detected gestures
@@ -333,10 +448,10 @@ function openRecognitionCamera() {
             }
         }
 
-        // Stop recognition service when leaving the page
+        // Stop cámara y polling al salir de la página
         const closeRecognition = () => {
             stopGesturePolling();
-            fetch(`/api/python/recognition-camera/close`, { method: 'POST' }).catch(() => {});
+            stopCamera();
         };
         window.addEventListener('beforeunload', closeRecognition);
         window.addEventListener('pagehide', closeRecognition);
@@ -346,8 +461,8 @@ function openRecognitionCamera() {
 
         function stopRecognitionAndNavigate() {
             stopGesturePolling();
-            fetch(`/api/python/recognition-camera/close`, { method: 'POST' })
-                .finally(() => { window.location.href = 'index.html'; });
+            stopCamera();
+            window.location.href = 'index.html';
         }
     </script>
 </body>

@@ -4,6 +4,7 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const httpProxy = require('http-proxy');
+const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://localhost:5000';
 
 // Create a proxy to forward requests to the Flask server
 const proxy = httpProxy.createProxyServer();
@@ -92,10 +93,10 @@ router.get('/video_feed', async (req, res) => {
     try {
         // Check if the Flask server is running
         const axios = require('axios');
-        await axios.get('http://127.0.0.1:5000/start-reconocimiento'); // Updated port to 5000
+        await axios.get(`${FLASK_REC_URL}/start-reconocimiento`); // Updated port to 5000
 
         // Proxy the request to the Flask server
-        proxy.web(req, res, { target: 'http://127.0.0.1:5000/video_feed' }, (error) => { // Updated port to 5000
+        proxy.web(req, res, { target: `${FLASK_REC_URL}/video_feed` }, (error) => { // Updated port to 5000
             console.error('Error proxying video feed:', error);
             res.status(500).send('Error proxying video feed.');
         });
@@ -108,7 +109,7 @@ router.get('/video_feed', async (req, res) => {
 
         // Wait a moment to allow the Flask server to start
         setTimeout(() => {
-            proxy.web(req, res, { target: 'http://127.0.0.1:5000/video_feed' }, (error) => { // Updated port to 5000
+            proxy.web(req, res, { target: `${FLASK_REC_URL}/video_feed` }, (error) => { // Updated port to 5000
                 if (error) {
                     console.error('Error proxying video feed after starting Flask server:', error);
                     res.status(500).send('Error proxying video feed after starting Flask server.');

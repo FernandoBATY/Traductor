@@ -38,7 +38,7 @@ router.post(
 
             jwt.sign(
                 payload,
-                'secret', // Usa una variable de entorno en producción
+                process.env.JWT_SECRET || 'secret', // Usa una variable de entorno en producción
                 { expiresIn: 360000 },
                 (err, token) => {
                     if (err) throw err;
@@ -87,7 +87,7 @@ router.post(
 
             jwt.sign(
                 payload,
-                'secret', // Usa una variable de entorno en producción
+                process.env.JWT_SECRET || 'secret', // Usa una variable de entorno en producción
                 { expiresIn: 360000 },
                 (err, token) => {
                     if (err) throw err;

@@ -4,6 +4,7 @@ from flask import Flask, render_template, Response, request, send_from_directory
 import os
 import cv2
 import mediapipe as mp
+import numpy as np
 import sys
 from flask_cors import CORS
 import logging
@@ -206,15 +207,22 @@ def capture_image():
     letter_dir = os.path.join(user_dir, letter.upper())
     os.makedirs(letter_dir, exist_ok=True)
 
-    # Ensure camera is active
-    if not camera_active:
-        if not open_camera():
-            return "Camera not available", 500
-    # Capture and save the image
-    ret, frame = cap.read()
-    if not ret:
-        print("Error: Failed to capture image from the camera.")
-        return "Failed to capture image.", 500
+    # Prioridad 1: imagen subida por el navegador (getUserMedia -> canvas -> POST binario)
+    datos_imagen = request.get_data(cache=False)
+    if datos_imagen:
+        arr = np.frombuffer(datos_imagen, np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if frame is None:
+            return {"success": False, "message": "Imagen recibida inválida."}, 400
+    else:
+        # Prioridad 2 (legado local): capturar desde la cámara del servidor
+        if not camera_active:
+            if not open_camera():
+                return "Camera not available", 500
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: Failed to capture image from the camera.")
+            return "Failed to capture image.", 500
 
     # Determine the next sequential filename
     existing_files = [f for f in os.listdir(letter_dir) if f.endswith(".jpg")]
@@ -269,14 +277,15 @@ def train_model():
         return {"success": False, "message": "Unexpected error.", "error": str(e)}, 500
 
 if __name__ == "__main__":
-    print("Starting captura_imagenes.py Flask server on port 5001...")
+    print("Starting captura_imagenes.py Flask server...")
+    PORT = int(os.getenv("PORT", "5001"))
     try:
         from waitress import serve
-        print("Using Waitress WSGI server")
-        serve(app, host='0.0.0.0', port=5001, _quiet=False)
+        print(f"Using Waitress WSGI server on port {PORT}")
+        serve(app, host='0.0.0.0', port=PORT, _quiet=False)
     except ImportError:
-        print("Waitress not available, using Flask development server")
-        app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)
+        print(f"Waitress not available, using Flask development server on port {PORT}")
+        app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
     except Exception as e:
         print(f"Error starting Flask server: {e}")
         import traceback

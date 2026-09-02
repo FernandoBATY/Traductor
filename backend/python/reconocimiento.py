@@ -4,7 +4,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from keras.models import load_model
-from gestos_utils import vector_crudo, vector_normalizado
+from gestos_utils import vector_crudo, vector_normalizado, vector_normalizado_coords
 import os
 import glob
 import subprocess
@@ -343,6 +343,52 @@ threading.Thread(target=inactivity_worker, args=(10,), daemon=True).start()
 import atexit
 atexit.register(close_camera)
 
+@app.route('/api/predecir', methods=['POST'])
+def predecir():
+    """Predice la letra a partir de los 21 landmarks {x,y,z} enviados desde el navegador.
+
+    El navegador corre MediaPipe Hands (JS), calcula las mismas features normalizadas
+    que el entrenamiento y aquí solo se hace la clasificación con el modelo cargado.
+    """
+    global previous_landmarks, movement_counter, last_detected_gesture, last_gesture_time
+
+    data = request.get_json(silent=True) or {}
+    coords = data.get('coords')
+    if not coords or len(coords) != 21:
+        return {"success": False, "message": "Se requieren 21 landmarks."}, 400
+
+    try:
+        puntos = [(float(c[0]), float(c[1]), float(c[2])) for c in coords]
+    except Exception:
+        return {"success": False, "message": "Formato de landmarks inválido."}, 400
+
+    vector_modelo = vector_normalizado_coords(puntos)
+    crudo = [v for p in puntos for v in p]
+
+    if modelo is None or len(vector_modelo) != 63:
+        return {"success": False, "message": "Modelo no cargado para predecir."}, 400
+
+    prediccion = modelo.predict(np.array([vector_modelo]), verbose=0)
+    indice = int(np.argmax(prediccion))
+    confianza = float(prediccion[0][indice])
+    etiqueta = mapa_inverso.get(indice)
+
+    # Antirrebote por movimiento (misma lógica que generate_frames)
+    if previous_landmarks is not None:
+        movement = np.linalg.norm(np.array(crudo) - np.array(previous_landmarks))
+        movement_counter = movement_counter + 1 if movement > movement_threshold else 0
+    previous_landmarks = crudo
+
+    if movement_counter == 0 and etiqueta is not None:
+        last_detected_gesture = etiqueta
+        last_gesture_time = time.time()
+
+    top3 = [(mapa_inverso[int(i)], round(float(prediccion[0][int(i)]), 3))
+            for i in np.argsort(prediccion[0])[::-1][:3]]
+    gesto_actual = last_detected_gesture if (time.time() - last_gesture_time) < 3 else None
+
+    return {"success": True, "gesture": gesto_actual, "top": top3, "confidence": confianza}, 200
+
 @app.route('/api/health')
 def health():
     print("Health check requested.")
@@ -350,13 +396,14 @@ def health():
 
 if __name__ == "__main__":
     print("Starting reconocimiento.py...")
+    PORT = int(os.getenv("PORT", "5000"))
     try:
         from waitress import serve
-        print("Using Waitress WSGI server on port 5000...")
-        serve(app, host='0.0.0.0', port=5000, _quiet=False)
+        print(f"Using Waitress WSGI server on port {PORT}...")
+        serve(app, host='0.0.0.0', port=PORT, _quiet=False)
     except ImportError:
-        print("Waitress not available, using Flask development server on port 5000...")
-        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+        print(f"Waitress not available, using Flask development server on port {PORT}...")
+        app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
     except Exception as e:
         print(f"Error starting Flask server: {e}")
         import traceback

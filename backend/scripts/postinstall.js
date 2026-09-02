@@ -11,6 +11,10 @@ function tryExec(cmd, description) {
   }
 }
 
+if (process.platform !== 'win32') {
+    console.log('Skipping Python dependency install on non-Windows (use the service build instead).');
+    process.exit(0);
+}
 console.log('Running postinstall: installing Python dependencies...');
 // Try Windows Python launcher first, then generic python
 if (!tryExec('py -m pip install -r requirements.txt', 'Install via py')) {
