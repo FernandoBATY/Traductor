@@ -18,10 +18,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
 WORKDIR /app
 
 # Install Python dependencies
+# Incluye TensorFlow (necesario para el entrenamiento) - PERO el reconocimiento usa
+# tflite-runtime y no carga TF en memoria salvo cuando se entrena bajo demanda.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Runtime ligero para el reconocimiento (evita cargar TensorFlow completo en memória).
+# Runtime TFLite ligero para el reconocimiento (evita importar tensorflow completo en memória).
 # En Python 3.9 tflite-runtime está disponible como wheel propio.
 RUN pip install --no-cache-dir tflite-runtime || true
 

@@ -2,7 +2,7 @@ services:
   - type: web
     name: traductor-backend
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: Dockerfile
     envVars:
       # MySQL (Aiven) - configurar credenciales en el panel de Render
