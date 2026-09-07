@@ -3,7 +3,6 @@ import subprocess
 from flask import Flask, render_template, Response, request, send_from_directory
 import os
 import cv2
-import mediapipe as mp
 import numpy as np
 import sys
 from flask_cors import CORS
@@ -27,9 +26,22 @@ backend_dir = os.path.dirname(base_dir)
 usuarios_entrenamientos_dir = os.path.join(backend_dir, "usuarios-entrenamientos")
 os.makedirs(usuarios_entrenamientos_dir, exist_ok=True)
 
-# Initialize MediaPipe
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(min_detection_confidence=0.8, min_tracking_confidence=0.8)
+# MediaPipe se importa de forma perezosa (solo cuando se usa la cámara), para no
+# cargar TensorFlow completo en el plan gratuito de Render.
+_mp = None
+_mp_hands = None
+_hands_solver = None
+
+def _get_mediapipe():
+    global _mp, _mp_hands, _hands_solver
+    if _mp is None:
+        import mediapipe as mp
+        _mp = mp
+        _mp_hands = mp.solutions.hands
+        _hands_solver = _mp_hands.Hands(
+            min_detection_confidence=0.8, min_tracking_confidence=0.8,
+        )
+    return _mp_hands, _hands_solver
 
 # Lazy camera control
 cap = None
@@ -112,11 +124,12 @@ def generate_frames():
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert to RGB for MediaPipe
 
         # Process the image and detect hands
+        _mp_hands, hands = _get_mediapipe()
         results = hands.process(frame_rgb)
 
         if results.multi_hand_landmarks:
             for landmarks in results.multi_hand_landmarks:
-                mp.solutions.drawing_utils.draw_landmarks(frame, landmarks, mp_hands.HAND_CONNECTIONS)
+                _mp.solutions.drawing_utils.draw_landmarks(frame, landmarks, _mp_hands.HAND_CONNECTIONS)
 
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()

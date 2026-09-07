@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+import os
+os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '3')
 from flask import Flask, render_template, Response, redirect, url_for, flash, request
 import cv2
-import mediapipe as mp
 import numpy as np
 from gestos_utils import vector_crudo, vector_normalizado, vector_normalizado_coords
 from inferencia_tflite import cargar_modelo_tflite, predecir_tflite, convertir_h5_a_tflite
@@ -141,11 +142,26 @@ except Exception as e:
     print(f"Warning: Could not load default model: {e}")
     print("Model will need to be loaded via /api/load-model endpoint")
 
-# Inicializar MediaPipe
-mp_hands = mp.solutions.hands
-mp_dibujo = mp.solutions.drawing_utils
-hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, 
-                       min_detection_confidence=0.8, min_tracking_confidence=0.8)
+# MediaPipe se importa de forma perezosa: solo se carga si realmente se usa la cámara
+# (flujo clásico servidor-cámara). En el flujo web (navegador→/api/predecir) no se necesita
+# y evita cargar TensorFlow completo en el plan gratuito de Render.
+_mp = None
+_mp_hands = None
+_mp_dibujo = None
+_hands_solver = None
+
+def _get_mediapipe():
+    global _mp, _mp_hands, _mp_dibujo, _hands_solver
+    if _mp is None:
+        import mediapipe as mp
+        _mp = mp
+        _mp_hands = mp.solutions.hands
+        _mp_dibujo = mp.solutions.drawing_utils
+        _hands_solver = _mp_hands.Hands(
+            static_image_mode=False, max_num_hands=1,
+            min_detection_confidence=0.8, min_tracking_confidence=0.8,
+        )
+    return _mp_hands, _mp_dibujo, _hands_solver
 
 # Lazy camera control
 cap = None
@@ -215,6 +231,7 @@ def generate_frames():
         frame = cv2.flip(frame, 1)  # Invertir la imagen para una experiencia más intuitiva
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+        mp_hands, mp_dibujo, hands = _get_mediapipe()
         resultados = hands.process(frame_rgb)
 
         if resultados.multi_hand_landmarks:
