@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="../js/custom-alert.js"></script>
+<script src="../js/mobile-nav.js"></script>
 <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
 <script id="tailwind-config">
         tailwind.config = {
@@ -43,7 +44,7 @@
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden">
 <div class="flex h-full w-full">
-<aside class="w-72 flex flex-col bg-white dark:bg-[#152a1c] border-r border-slate-200 dark:border-slate-800 transition-colors duration-300">
+<aside class="hidden lg:flex w-72 flex-col bg-white dark:bg-[#152a1c] border-r border-slate-200 dark:border-slate-800 transition-colors duration-300">
 <div class="p-6">
 <div class="flex items-center gap-3">
 <div class="bg-primary/20 p-2 rounded-xl">
@@ -76,55 +77,78 @@
 </div>
 </aside>
 <main class="flex-1 flex flex-col overflow-y-auto">
-<header class="bg-white/70 dark:bg-background-dark/70 backdrop-blur-md sticky top-0 z-10 px-8 py-4 border-b border-slate-200 dark:border-slate-800">
-<div class="max-w-6xl mx-auto flex items-center justify-between gap-6">
-<div class="flex items-center gap-4">
-<div class="size-9 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+<header class="bg-white/70 dark:bg-background-dark/70 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-8 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800">
+<div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+<div class="flex items-center gap-4 min-w-0">
+<div class="size-9 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
 <span class="material-symbols-outlined">sign_language</span>
 </div>
-<h2 class="text-slate-900 dark:text-white text-xl font-bold tracking-tight">Portal de Acceso</h2>
+<h2 class="text-slate-900 dark:text-white text-lg sm:text-xl font-bold tracking-tight truncate">Portal de Acceso</h2>
 </div>
-<nav class="hidden md:flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+<button id="menuToggleBtn" onclick="toggleMobileMenu()" aria-label="Abrir menú" class="lg:hidden flex size-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined text-base">menu</span>
+</button>
+<nav class="hidden lg:flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
 <button onclick="goHome()" class="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5">Inicio</button>
 <button onclick="goToDictionary()" class="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5">Diccionario</button>
 <button onclick="goToCapture()" class="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5">Captura</button>
 <button onclick="goToTranslator()" class="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5">Visualización</button>
 </nav>
-<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 sm:gap-3">
 <button id="darkModeBtn" onclick="toggleTheme()" class="flex size-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors" title="Modo oscuro">
 <span id="themeIcon" class="material-symbols-outlined text-base">dark_mode</span>
 </button>
 <!-- Botón de login (visible solo si NO está autenticado) -->
-<button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
+<button id="loginBtn" onclick="goToLoginPage()" class="hidden items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
 <span class="material-symbols-outlined text-lg">login</span>
-                        Iniciar Sesión
-                    </button>
+<span class="hidden sm:inline">Iniciar Sesión</span>
+</button>
 
 <!-- Nombre de usuario y logout (visible solo si está autenticado) -->
-<div id="userSection" class="hidden flex items-center gap-3">
-<span class="text-slate-600 dark:text-slate-400 text-sm font-medium">
-                        Bienvenido, <span id="userName" class="text-primary font-bold"></span>
+<div id="userSection" class="hidden items-center gap-3">
+<span class="hidden md:inline text-slate-600 dark:text-slate-400 text-sm font-medium">
+Bienvenido, <span id="userName" class="text-primary font-bold"></span>
 </span>
-<button onclick="logout()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 font-semibold text-sm hover:bg-red-500/20 transition-colors">
+<button onclick="logout()" class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 font-semibold text-sm hover:bg-red-500/20 transition-colors" title="Cerrar sesión">
 <span class="material-symbols-outlined text-lg">logout</span>
-                        Cerrar Sesión
-                    </button>
+<span class="hidden sm:inline">Cerrar Sesión</span>
+</button>
 </div>
 </div>
 </div>
+<nav id="mobileNav" class="hidden lg:hidden absolute left-0 right-0 top-full z-40 bg-white dark:bg-[#152a1c] border-b border-slate-200 dark:border-slate-800 shadow-xl">
+<div class="px-4 py-3 space-y-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+<button onclick="closeMobileMenu();goHome()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-left">
+<span class="material-symbols-outlined text-base">home</span>
+Inicio
+</button>
+<button onclick="closeMobileMenu();goToDictionary()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-left">
+<span class="material-symbols-outlined text-base">menu_book</span>
+Diccionario
+</button>
+<button onclick="closeMobileMenu();goToCapture()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-left">
+<span class="material-symbols-outlined text-base">videocam</span>
+Captura
+</button>
+<button onclick="closeMobileMenu();goToTranslator()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 text-left">
+<span class="material-symbols-outlined text-base">translate</span>
+Visualización
+</button>
+</div>
+</nav>
 </header>
-<div class="px-8 py-12 max-w-6xl mx-auto w-full">
-<div class="mb-12 text-center md:text-left">
-<h2 class="text-slate-900 dark:text-white text-5xl font-black tracking-tight leading-tight mb-4">
+<div class="px-4 sm:px-8 py-6 sm:py-12 max-w-6xl mx-auto w-full">
+<div class="mb-8 sm:mb-12 text-center md:text-left">
+<h2 class="text-slate-900 dark:text-white text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-4">
                     Rompiendo barreras con <br/><span class="text-primary">Inteligencia Artificial</span>
 </h2>
-<p class="text-slate-500 dark:text-slate-400 text-lg max-w-2xl leading-relaxed">
+<p class="text-slate-500 dark:text-slate-400 text-base sm:text-lg max-w-2xl leading-relaxed">
                     Nuestra plataforma permite la comunicación fluida entre personas sordas y oyentes mediante el reconocimiento de señas en tiempo real y herramientas de entrenamiento avanzadas.
                 </p>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
 <div class="group relative bg-white dark:bg-[#152a1c] rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl transition-all hover:-translate-y-2 hover:shadow-primary/10">
-<div class="h-56 w-full bg-slate-900 relative overflow-hidden">
+<div class="h-40 sm:h-56 w-full bg-slate-900 relative overflow-hidden">
 <div class="absolute inset-0 bg-cover bg-center opacity-60 group-hover:scale-110 transition-transform duration-700" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD0w-evJe8JquuUspb1nXanYDBFscCeybtAKV7egb4W0Mt8L6v2OIJnQfnVsVDyS993I8G4UzZevaoD080GFKhcG-72Ji5OypI7m0Ix8RktRpEC3J37Fl5Yif-8c9UFxFTjeMclST0Lq2Dsvx9btQHAm_uLndV20tJ6txEsGkdy-u9nWiKmp6_7yoCiB1uS1ZoNDGxkXwzTa9zZYvDWZdVOftvhpxeeDYNmLyEcwqlnsIf_LClqGlftMDw46lpZgAUzWHZ4_ixu0IM");'></div>
 <div class="absolute inset-0 bg-gradient-to-t from-[#152a1c] to-transparent"></div>
 <div class="absolute bottom-4 left-6">

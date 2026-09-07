@@ -38,44 +38,70 @@
     .fallback-message { font-size: 0.85rem; }
   </style>
 
-  <script src="../js/custom-alert.js"></script>
-  <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
+<script src="../js/custom-alert.js"></script>
+<script src="../js/mobile-nav.js"></script>
+<script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
 </head>
 
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
   <!-- Header común -->
-  <header class="w-full px-6 lg:px-20 py-6 flex flex-wrap gap-4 items-center justify-between bg-white/80 dark:bg-[#152a1c]/80 backdrop-blur border-b border-gray-200 dark:border-white/10">
-    <div class="flex items-center gap-3">
-      <div>
-        <h1 class="text-xl font-bold tracking-tight">Traductor Señas</h1>
+  <header class="w-full px-4 sm:px-6 lg:px-20 py-4 sm:py-6 flex flex-wrap gap-3 items-center justify-between bg-white/80 dark:bg-[#152a1c]/80 backdrop-blur border-b border-gray-200 dark:border-white/10 relative">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="min-w-0">
+        <h1 class="text-lg sm:text-xl font-bold tracking-tight truncate">Traductor Señas</h1>
         <p class="text-xs text-gray-500 dark:text-gray-400">Diccionario LSM</p>
       </div>
     </div>
 
-    <nav class="flex items-center flex-wrap gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+    <button id="menuToggleBtn" onclick="toggleMobileMenu()" aria-label="Abrir menú" class="md:hidden flex size-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+      <span class="material-symbols-outlined text-base">menu</span>
+    </button>
+
+    <nav class="hidden md:flex items-center flex-wrap gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
       <button onclick="goHome()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Inicio</button>
       <button onclick="goToDictionary()" class="px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold">Diccionario</button>
       <button onclick="goToCapture()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Captura</button>
       <button onclick="goToTranslator()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Visualización</button>
     </nav>
 
-    <div class="flex items-center gap-3 ml-auto">
+    <div class="flex items-center gap-2 sm:gap-3 ml-auto">
       <button id="darkModeBtn" onclick="toggleTheme()" class="flex size-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors" title="Modo oscuro">
         <span id="themeIcon" class="material-symbols-outlined text-base">dark_mode</span>
       </button>
-      <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
+      <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-3 sm:px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
         <span class="material-symbols-outlined text-base">login</span>
-        <span>Iniciar sesión</span>
+        <span class="hidden sm:inline">Iniciar sesión</span>
       </button>
 
       <div id="userSection" class="hidden flex items-center">
-        <span class="text-sm text-gray-600 dark:text-gray-300">Hola, <span id="userName" class="font-bold text-primary"></span></span>
+        <span class="text-sm text-gray-600 dark:text-gray-300 hidden md:inline">Hola, <span id="userName" class="font-bold text-primary"></span></span>
       </div>
     </div>
+
+    <nav id="mobileNav" class="hidden md:hidden absolute left-0 right-0 top-full z-40 bg-white dark:bg-[#152a1c] border-b border-gray-200 dark:border-white/10 shadow-xl w-full">
+      <div class="px-4 py-3 space-y-1 text-sm font-semibold text-gray-700 dark:text-gray-200">
+        <button onclick="closeMobileMenu();goHome()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-left">
+          <span class="material-symbols-outlined text-base">home</span>
+          Inicio
+        </button>
+        <button onclick="closeMobileMenu();goToDictionary()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 text-primary font-bold text-left">
+          <span class="material-symbols-outlined text-base">menu_book</span>
+          Diccionario
+        </button>
+        <button onclick="closeMobileMenu();goToCapture()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-left">
+          <span class="material-symbols-outlined text-base">videocam</span>
+          Captura
+        </button>
+        <button onclick="closeMobileMenu();goToTranslator()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-left">
+          <span class="material-symbols-outlined text-base">translate</span>
+          Visualización
+        </button>
+      </div>
+    </nav>
   </header>
 
   <!-- Intro -->
-  <section class="px-6 lg:px-20 py-4">
+  <section class="px-4 sm:px-6 lg:px-20 py-4">
     <div class="bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl p-6 space-y-3">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -101,9 +127,9 @@
   </section>
 
   <!-- Grid of Letters -->
-  <main class="px-6 lg:px-20 py-6">
+  <main class="px-4 sm:px-6 lg:px-20 py-6">
     <div id="gridWrapper" class="transition-all">
-      <div id="lettersGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+      <div id="lettersGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-6">
         
         <!-- Letra A -->
         <div class="letter-card bg-white dark:bg-[#152a1c] border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm flex flex-col">

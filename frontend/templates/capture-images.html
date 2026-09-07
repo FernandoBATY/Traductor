@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
         <script src="../js/custom-alert.js"></script>
+    <script src="../js/mobile-nav.js"></script>
     <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
     <script id="tailwind-config">
         tailwind.config = {
@@ -64,44 +65,67 @@
 <body class="bg-background-light dark:bg-background-dark min-h-screen transition-colors duration-300">
 <div class="flex flex-col min-h-screen w-full">
     <!-- Top Navigation Bar unificado -->
-    <header class="flex flex-wrap items-center gap-4 justify-between border-b border-[#e7f4eb] dark:border-white/10 px-6 lg:px-10 py-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
-        <div class="flex items-center gap-3 text-[#0d1c12] dark:text-white">
-            <div class="size-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+    <header class="flex flex-wrap items-center gap-3 justify-between border-b border-[#e7f4eb] dark:border-white/10 px-4 sm:px-6 lg:px-10 py-3 sm:py-4 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="flex items-center gap-3 text-[#0d1c12] dark:text-white min-w-0">
+            <div class="size-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
                 <span class="material-symbols-outlined">sign_language</span>
             </div>
-            <div>
+            <div class="min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Módulo</p>
-                <h2 class="text-lg font-bold leading-tight tracking-tight">Captura de Gestos</h2>
+                <h2 class="text-base sm:text-lg font-bold leading-tight tracking-tight truncate">Captura de Gestos</h2>
             </div>
         </div>
-        <nav class="flex items-center flex-wrap gap-2 text-sm font-semibold text-[#0d1c12] dark:text-gray-200">
+        <button id="menuToggleBtn" onclick="toggleMobileMenu()" aria-label="Abrir menú" class="lg:hidden flex size-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+            <span class="material-symbols-outlined text-base">menu</span>
+        </button>
+        <nav class="hidden lg:flex items-center flex-wrap gap-2 text-sm font-semibold text-[#0d1c12] dark:text-gray-200">
             <button onclick="goHome()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Inicio</button>
             <button onclick="goToDictionary()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Diccionario</button>
             <button class="px-3 py-2 rounded-lg bg-primary/10 text-primary font-bold">Captura</button>
             <button onclick="goToTranslator()" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5">Visualización</button>
         </nav>
-        <div class="flex items-center gap-3 ml-auto">
+        <div class="flex items-center gap-2 sm:gap-3 ml-auto">
             <button id="darkModeBtn" onclick="toggleTheme()" class="flex size-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors" title="Modo oscuro">
                 <span id="themeIcon" class="material-symbols-outlined text-base">dark_mode</span>
             </button>
-            <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
+            <button id="loginBtn" onclick="goToLoginPage()" class="hidden flex items-center gap-2 px-3 sm:px-4 h-10 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10">
                 <span class="material-symbols-outlined text-base">login</span>
-                <span>Iniciar sesión</span>
+                <span class="hidden sm:inline">Iniciar sesión</span>
             </button>
-            <div id="userSection" class="hidden flex items-center gap-3">
-                <span class="text-sm text-gray-600 dark:text-gray-300">Hola, <span id="userName" class="font-bold text-primary"></span></span>
-                <button onclick="logout()" class="flex items-center gap-1 px-4 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-500/20">
+            <div id="userSection" class="hidden flex items-center gap-2 sm:gap-3">
+                <span class="text-sm text-gray-600 dark:text-gray-300 hidden md:inline">Hola, <span id="userName" class="font-bold text-primary"></span></span>
+                <button onclick="logout()" class="flex items-center gap-1 px-3 sm:px-4 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-500/20" title="Cerrar sesión">
                     <span class="material-symbols-outlined text-base">logout</span>
-                    <span>Cerrar sesión</span>
+                    <span class="hidden sm:inline">Cerrar sesión</span>
                 </button>
             </div>
-            <button onclick="stopCaptureAndNavigate()" class="flex items-center justify-center rounded-xl h-10 w-10 bg-[#e7f4eb] dark:bg-white/10 text-[#0d1c12] dark:text-white hover:bg-primary/20 transition-colors">
+            <button onclick="stopCaptureAndNavigate()" class="hidden sm:flex items-center justify-center rounded-xl h-10 w-10 bg-[#e7f4eb] dark:bg-white/10 text-[#0d1c12] dark:text-white hover:bg-primary/20 transition-colors" title="Ir al inicio">
                 <span class="material-symbols-outlined text-xl">home</span>
             </button>
         </div>
+        <nav id="mobileNav" class="hidden lg:hidden absolute left-0 right-0 top-full z-40 bg-white dark:bg-[#152a1c] border-b border-gray-200 dark:border-white/10 shadow-xl w-full">
+            <div class="px-4 py-3 space-y-1 text-sm font-semibold text-[#0d1c12] dark:text-gray-200">
+                <button onclick="closeMobileMenu();goHome()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-left">
+                    <span class="material-symbols-outlined text-base">home</span>
+                    Inicio
+                </button>
+                <button onclick="closeMobileMenu();goToDictionary()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-left">
+                    <span class="material-symbols-outlined text-base">menu_book</span>
+                    Diccionario
+                </button>
+                <button onclick="closeMobileMenu()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 text-primary font-bold text-left">
+                    <span class="material-symbols-outlined text-base">videocam</span>
+                    Captura
+                </button>
+                <button onclick="closeMobileMenu();goToTranslator()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-left">
+                    <span class="material-symbols-outlined text-base">translate</span>
+                    Visualización
+                </button>
+            </div>
+        </nav>
     </header>
 
-    <main class="flex-1 max-w-5xl mx-auto w-full px-6 py-4">
+    <main class="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-4">
         <!-- Breadcrumbs -->
         <div class="flex flex-wrap items-center gap-2 mb-4">
             <a class="text-[#499c65] dark:text-primary/70 text-sm font-medium" href="index.html">Entrenamiento</a>
@@ -180,13 +204,13 @@
         </div>
 
         <!-- Bottom Navigation Bar -->
-        <div class="mt-6 flex items-center justify-between border-t border-[#e7f4eb] dark:border-white/10 pt-6 pb-6">
-            <button onclick="stopCaptureAndNavigate()" class="px-8 py-3 rounded-xl border-2 border-[#cee8d7] dark:border-white/20 text-[#499c65] dark:text-gray-300 font-bold hover:bg-[#e7f4eb] dark:hover:bg-white/5 transition-colors flex items-center gap-2">
+        <div class="mt-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-[#e7f4eb] dark:border-white/10 pt-6 pb-6">
+            <button onclick="stopCaptureAndNavigate()" class="px-8 py-3 rounded-xl border-2 border-[#cee8d7] dark:border-white/20 text-[#499c65] dark:text-gray-300 font-bold hover:bg-[#e7f4eb] dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined">arrow_back</span>
                 REGRESAR
             </button>
-            <div class="flex gap-4">
-                <button onclick="trainModel()" class="px-8 py-3 rounded-xl bg-primary text-[#0d1c12] font-black hover:bg-[#0bc148] transition-all shadow-lg flex items-center gap-2">
+            <div class="flex">
+                <button onclick="trainModel()" class="w-full px-8 py-3 rounded-xl bg-primary text-[#0d1c12] font-black hover:bg-[#0bc148] transition-all shadow-lg flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined">model_training</span>
                     ENTRENAR MODELO
                 </button>
