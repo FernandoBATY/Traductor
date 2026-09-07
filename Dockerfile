@@ -29,6 +29,10 @@ RUN pip install --no-cache-dir tflite-runtime || true
 
 # Install Node dependencies
 COPY package.json package-lock.json* ./
+# El postinstall (<backend/scripts/postinstall.js) se ejecuta al instalar dependencias;
+# en Linux/Docker solo imprime y sale (la instalacion de Python la hace el Dockerfile),
+# pero el archivo debe existir ya en esta capa.
+COPY backend/scripts/postinstall.js ./backend/scripts/postinstall.js
 RUN npm install --production
 
 # Copy project files
