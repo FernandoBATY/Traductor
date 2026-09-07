@@ -146,7 +146,7 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 
 ## Despliegue en Render (estado actual)
 
-El proyecto está en GitHub (`main`) y **desplegado en Render**: https://traducer-backend-hrdf.onrender.com/
+El proyecto está en GitHub (`main`) y **desplegado en Render**: https://traductor-backend-hrdf.onrender.com/
 (Web Service único, rama `main`).
 
 Ya resuelto:
