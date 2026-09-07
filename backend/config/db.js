@@ -8,7 +8,7 @@ const connectDB = async () => {
             : undefined;
         const connection = await mysql.createConnection({
             host: host,
-            port: process.env.DB_PORT || 3306,
+            port: parseInt(process.env.DB_PORT, 10) || 3306,
             user: process.env.DB_USER || 'root',
             password: process.env.DB_PASS || '21617',
             database: process.env.DB_NAME || 'usuarios',
