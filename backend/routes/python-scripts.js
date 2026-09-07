@@ -4,8 +4,8 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
-const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://localhost:5000';
-const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://localhost:5001';
+const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://127.0.0.1:5000'; // 127.0.0.1 evita que Node use IPv6 (::1) y no encuentre a Flask
+const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://127.0.0.1:5001';
 
 // ============ Diagnostic Routes ============
 
