@@ -1,31 +1,41 @@
 # Traductor de Lengua de Señas Mexicana (LSM)
 
 Sistema web para traducción de letras del alfabeto en Lengua de Señas Mexicana usando
-reconocimiento por gestos con Machine Learning (MediaPipe + TensorFlow/Keras).
+reconocimiento por gestos con Machine Learning (MediaPipe + TensorFlow Lite).
 
-El proyecto incluye un **modelo base compartido** que reconoce la mano y las **26 letras (A–Z)**
-sin necesidad de que el usuario entrene su propio modelo, además de permitir entrenar un
-**modelo personalizado** por usuario si se desea.
+🌐 **Proyecto en línea:** https://traductor-backend-hrdf.onrender.com/
+
+El proyecto incluye un **modelo base compartido** que reconoce las **26 letras (A–Z)** sin
+necesidad de que el usuario entrene su propio modelo, además de permitir entrenar un
+**modelo personalizado** por usuario si se desea. La cámara es la del **navegador**
+(`getUserMedia` + MediaPipe client-side), por lo que funciona en la nube y en móviles.
 
 ## Requisitos del sistema
 
 - **Node.js** 18 o superior
 - **Python 3.9** (compatibilidad con TensorFlow 2.12; rango válido 3.8–3.11)
 - **MySQL / MariaDB**
-- Cámara web (en el equipo donde corre el servicio, ver nota de despliegue)
+- Cámara web (del navegador del usuario, no del servidor)
 
 ## Arquitectura
 
 | Componente | Puerto | Rol |
 |---|---|---|
-| **Node.js + Express** | 3000 | API REST, autenticación, páginas web, orquesta los servicios Python |
-| **Flask (reconocimiento)** | 5000 | `backend/python/reconocimiento.py` — detección de mano y predicción en vivo |
-| **Flask (captura)** | 5001 | `backend/python/captura_imagenes.py` — captura de imágenes para entrenamiento |
-| **MySQL** | 3306 | Base de datos `usuarios` (usuarios, modelos, estadísticas) |
-| **TensorFlow/Keras + MediaPipe + OpenCV** | — | Modelos `.h5` y landmarks de mano |
+| **Node.js + Express** | `$PORT` (3000 local) | API REST, autenticación, páginas web, orquesta los servicios Python |
+| **Flask (reconocimiento)** | `FLASK_REC_PORT` (5000) | `backend/python/reconocimiento.py` — carga el modelo TFLite y predice gestos |
+| **Flask (captura)** | `FLASK_CAPTURE_PORT` (5001) | `backend/python/captura_imagenes.py` — guarda imágenes para entrenamiento |
+| **MySQL (Aiven en la nube)** | `$DB_PORT` | Base de datos `usuarios` (usuarios) |
+| **MediaPipe (navegador)** | — | Detecta los 21 landmarks de la mano en el cliente, espejado en canvas |
 
-El servidor de Node **arranca automáticamente** los dos servicios Flask al iniciar (`spawn('python', ...)`)
-y hace de proxy hacia ellos. La cámara se abre en el **servidor** (`cv2.VideoCapture`).
+**Flujo de reconocimiento real (cloud):**
+
+1. El navegador abre la cámara con `getUserMedia` y detecta los **21 landmarks** de la mano
+   con MediaPipe (`tasks-vision@0.10.0`).
+2. Los landmarks se normalizan y se envían a `POST /api/python/predecir`.
+3. Node hace de proxy a `reconocimiento.py` (Flask), que carga un modelo TFLite (propio del
+   usuario si existe, si no el **modelo base compartido** `base_modelo_gestos.tflite`) y devuelve
+   la letra detectada.
+4. El frontend muestra la letra en el panel "Traducción" en tiempo real.
 
 ## Inicio rápido (Windows)
 
@@ -54,6 +64,11 @@ npm install
 npm run dev
 ```
 
+> En local, el servidor de Node **arranca automáticamente** los dos servicios Flask al iniciar
+> (`spawn('python', ...)`) con `FLASK_REC_PORT=5000` y `FLASK_CAPTURE_PORT=5001`. Si configuras
+> `FLASK_REC_URL` / `FLASK_CAPTURE_URL` (servicios externos), Node **no** propaga procesos Python
+> y apunta a esas URLs.
+
 ## Configuración de la base de datos
 
 ```sql
@@ -74,11 +89,15 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 | `DB_HOST` | `localhost` | Host de MySQL |
 | `DB_USER` | `root` | Usuario de MySQL |
 | `DB_PASS` | `21617` | Contraseña de MySQL |
+| `DB_PORT` | `3306` | Puerto de MySQL (con `parseInt` para evitar errores) |
 | `DB_NAME` | `usuarios` | Nombre de la base de datos |
-| `PORT` | `3000` | Puerto del servidor Node |
+| `PORT` | `3000` | Puerto del servidor Node (Render lo asigna) |
 | `JWT_SECRET` | `secret` | Secreto para firmar tokens (usar uno real en producción) |
 | `USER_ID` | `1` | Usuario por defecto para el reconocimiento |
-| `FLASK_REC_URL` / `FLASK_CAPTURE_URL` | *(pendiente)* | URLs de los servicios Flask para despliegue |
+| `FLASK_REC_URL` | `http://localhost:5000` | URL del servicio Flask de reconocimiento |
+| `FLASK_CAPTURE_URL` | `http://localhost:5001` | URL del servicio Flask de captura |
+| `FLASK_REC_PORT` | `5000` | Puerto interno de `reconocimiento.py` (no usar `PORT` de Render) |
+| `FLASK_CAPTURE_PORT` | `5001` | Puerto interno de `captura_imagenes.py` |
 
 ## Funcionalidades
 
@@ -86,9 +105,10 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 - **Diccionario** de gestos del alfabeto.
 - **Captura de imágenes** para entrenar un modelo propio.
 - **Entrenamiento de modelo personalizado** por usuario.
-- **Reconocimiento en tiempo real** con letras **A–Z estáticas**.
+- **Reconocimiento en tiempo real** con letras **A–Z estáticas** (landmarks del navegador).
 - **Modelo base compartido**: cualquier usuario sin modelo propio usa automáticamente el modelo
   base; en la página de reconocimiento se puede elegir **Mi modelo / Modelo base**.
+- **Diseño responsivo**: menú hamburguesa en móvil y layout adaptado a pantallas pequeñas.
 
 ## Estructura del proyecto
 
@@ -100,58 +120,61 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 ├── .env.example                # Plantilla de variables de entorno
 ├── run_system.bat              # Arranque local en Windows
 ├── backend/
-│   ├── server.js               # Express: API, estáticos, proxy y arranque de Flask
+│   ├── server.js               # Express: API, estáticos, spawn de Flask y proxy
 │   ├── config/db.js            # Conexión MySQL (mysql2)
 │   ├── models/User.js          # Consultas de usuarios
 │   ├── routes/                 # auth.js, script.js, python-scripts.js
+│   ├── scripts/postinstall.js  # Instala dependencias de Python tras npm install
 │   ├── python/                 # Scripts ML
-│   │   ├── reconocimiento.py   # Flask :5000 — predicción en vivo
-│   │   ├── captura_imagenes.py # Flask :5001 — captura para entrenamiento
+│   │   ├── reconocimiento.py   # Flask ($FLASK_REC_PORT) — predicción de gestos
+│   │   ├── captura_imagenes.py # Flask ($FLASK_CAPTURE_PORT) — captura para entrenamiento
 │   │   ├── entrenamiento.py    # Entrenamiento de modelo por usuario
 │   │   ├── entrenar_base.py    # Entrenamiento del modelo base (A–Z) con aumento de datos
 │   │   ├── evaluar_base.py     # Evaluación del modelo base
+│   │   ├── inferencia_tflite.py# Cargador TFLite ligero (carga .tflite, convierte .h5 si hace falta)
 │   │   ├── gestos_utils.py     # Features normalizadas compartidas (invariantes a posición/escala)
 │   │   ├── roboflow_dataset.py # Conversor del dataset VOC (Roboflow) a carpetas por letra
 │   │   └── requirements.txt
 │   ├── modelos/base/           # Modelo base compartido (solo este se sube al repo)
 │   └── usuarios-entrenamientos/ # Imágenes de entrenamiento por usuario (ignorado en git)
 └── frontend/
-    ├── templates/              # Páginas HTML
-    ├── js/                     # JavaScript del frontend
+    ├── templates/              # Páginas HTML (index, diccionario, visualización, captura, login)
+    ├── js/                     # JavaScript del frontend (incl. mobile-nav.js, scripts.js, custom-alert.js)
     ├── css/                    # Estilos
     └── static/                 # Recursos estáticos
 ```
 
-## Despliegue en Render (estado y pendientes)
+## Despliegue en Render (estado actual)
 
-Estado actual: el proyecto está en GitHub (`main`). Ya están listos para la nube el código fuente,
-el **modelo base** incluido en el repo, el uso de `process.env.PORT` en Node y la lectura de
-variables de entorno en `db.js`.
+El proyecto está en GitHub (`main`) y **desplegado en Render**: https://traducer-backend-hrdf.onrender.com/
+(Web Service único, rama `main`).
 
-Para que el despliegue **funcione de verdad**, falta resolver (en orden de prioridad):
+Ya resuelto:
 
-1. **Cámara del navegador (getUserMedia)** — requisito indispensable. Hoy la cámara es la del
-   *servidor* (`cv2.VideoCapture` en `reconocimiento.py:152` y `captura_imagenes.py:66`); Render
-   no tiene webcam. Hay que capturar en el navegador y enviar landmarks (o frames) al backend,
-   o usar inferencia client-side.
-2. **Escuchar en `$PORT`** en los dos Flask — los puertos 5000/5001 están fijos
-   (`reconocimiento.py:356`, `captura_imagenes.py:276`); Render entrega el puerto por la variable `PORT`.
-3. **URLs de los servicios Python configurables** — hay 21 referencias fijas a `localhost:5000/5001`
-   en `python-scripts.js`, `script.js` y `dashboard.js:27` que en la nube deben venir de variables
-   de entorno (p. ej. `FLASK_REC_URL` / `FLASK_CAPTURE_URL`). El servidor Node debe dejar de
-   espawnear Python y apuntar a servicios externos (o correr ambos en un solo contenedor con Docker).
-4. **Base de datos** — Render no ofrece MySQL gratis. Opción recomendada: **MySQL gratis en Aiven**
-   (zero cambios de código, solo credenciales por entorno); alternativa: migrar a **PostgreSQL free**
-   de Render (el código usa poco SQL, es un cambio acotado).
-5. **`JWT_SECRET` real** — hoy está hardcodeado `'secret'` en `auth.js`.
-6. **Decidir el modelo de proceso** — dos Web Services (Node + Python) o un contenedor único
-   (Dockerfile) que ejecute ambos; la build de TensorFlow es pesada (~varios GB, varios minutos).
-7. **Quitar el postinstall de Python** en `npm install` (`backend/scripts/postinstall.js` ejecuta
-   `pip install` con `py`/`python`, pensado para Windows).
+1. **Cámara del navegador** — se usa `getUserMedia` + MediaPipe client-side; ya no depende de
+   cámara del servidor. `reconocimiento.py` solo predice a partir de los landmarks que envía el
+   navegador (`/api/predecir`).
+2. **Puertos** — los Flask NO usan `$PORT` (port 10000 de Render) sino variables dedicadas
+   (`FLASK_REC_PORT=5000`, `FLASK_CAPTURE_PORT=5001`), evitando el clásico "Address already in use".
+3. **Base de datos** — MySQL en **Aiven** (plan gratuito), credenciales vía variables de entorno;
+   `DB_PORT` se parsea como entero.
+4. **Material de la app** — el modelo base y sus metadatos están en el repo (`backend/modelos/base/`),
+   por lo que siempre existen en el despliegue.
+5. **Frontend responsivo** y sin dependencia de cámara del servidor.
 
-Límites del plan gratuito a tener en cuenta: los servicios **duermen tras ~15 min** sin uso (la
-primera carga tarda ~50 s), y el **disco es efímero** (los modelos que entrenen los usuarios se
-pierden al redeployar; el modelo base, al estar en el repo, siempre existe).
+Pendientes / limitaciones a tener en cuenta:
+
+1. **Disco efímero de Render** — los modelos que entrenen los usuarios (`usuarios-entrenamientos/`)
+   se pierden al redeployar. El modelo base (en el repo) siempre sobrevive. Para persistir modelos
+   habría que usar un volumen o un bucket (S3 / R2).
+2. **`JWT_SECRET` real** — configúralo en el panel de Render (hoy cae a `'secret'` si no existe).
+3. **Los servicios duermen tras ~15 min** sin uso en el plan gratuito — la primera carga puede
+   tardar ~50 s.
+4. **Seguridad**: las rutas de `/api/python` no están protegidas con middleware JWT (cualquier
+   cliente puede pasar un `userId` arbitrario).
+5. **Tailwind por CDN** — funcional para el proyecto, pero en producción conviene compilarlo.
+6. **postinstall de Python** en `npm install` — pensado para Windows; en Render se instalan los
+   paquetes con el propio `requirements.txt`.
 
 ## Solución de problemas
 
@@ -160,6 +183,12 @@ pierden al redeployar; el modelo base, al estar en el repo, siempre existe).
 - **Fallo de dependencias**: `pip install "numpy==1.23.5"` y `"protobuf==4.25.3"` con TF 2.12.
 - **No se conecta a MySQL**: verificar que el servicio esté corriendo y las credenciales de entorno.
 - **Puerto ocupado**: cambiar `PORT` en las variables de entorno.
+- **Flask no arranca en Render**: comprobar que las variables de puerto (`FLASK_REC_PORT` /
+  `FLASK_CAPTURE_PORT`) no coincidan con el `PORT` global de Render, o verás `[Errno 98] Address
+  already in use` en los logs.
+- **"No se pudo cargar el modelo" / `load-model`**: ese proxy devuelve `success:true` con
+  `modelLoaded:false` cuando el usuario no tiene modelo propio (comportamiento esperado: se usa el
+  base). Si Flask está caído de verdad, revisa los logs de Render.
 
 ## Licencia
 
