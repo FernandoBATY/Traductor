@@ -120,8 +120,8 @@ const pythonServicesExternos = !!(process.env.FLASK_REC_URL || process.env.FLASK
 if (pythonServicesExternos) {
     console.log('Servicios Python externos configurados, no se propagan procesos locales.');
 } else {
-    capturaProc = startPythonService(capturaImagenesPath);
-    reconocimientoProc = startPythonService(reconocimientoPath, { USER_ID: '1' });
+    capturaProc = startPythonService(capturaImagenesPath, { FLASK_CAPTURE_PORT: '5001' });
+    reconocimientoProc = startPythonService(reconocimientoPath, { USER_ID: '1', FLASK_REC_PORT: '5000' });
 }
 
 async function gracefulShutdown() {

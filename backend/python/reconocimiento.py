@@ -451,7 +451,7 @@ def health():
 
 if __name__ == "__main__":
     print("Starting reconocimiento.py...")
-    PORT = int(os.getenv("PORT", "5000"))
+    PORT = int(os.getenv("FLASK_REC_PORT", "5000"))
     try:
         from waitress import serve
         print(f"Using Waitress WSGI server on port {PORT}...")

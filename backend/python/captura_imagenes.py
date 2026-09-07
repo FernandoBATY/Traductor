@@ -291,7 +291,7 @@ def train_model():
 
 if __name__ == "__main__":
     print("Starting captura_imagenes.py Flask server...")
-    PORT = int(os.getenv("PORT", "5001"))
+    PORT = int(os.getenv("FLASK_CAPTURE_PORT", "5001"))
     try:
         from waitress import serve
         print(f"Using Waitress WSGI server on port {PORT}")
