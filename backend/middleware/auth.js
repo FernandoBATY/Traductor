@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { secret } = require('../config/jwt');
 
 module.exports = function auth(req, res, next) {
     const header = req.headers.authorization || '';
@@ -6,7 +7,7 @@ module.exports = function auth(req, res, next) {
         return res.status(401).json({ msg: 'No hay token, autorización denegada' });
     }
     try {
-        const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET || 'secret');
+        const payload = jwt.verify(header.slice(7), secret);
         req.user = payload.user;
         req.userId = payload.user.id;
         next();

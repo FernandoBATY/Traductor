@@ -21,6 +21,13 @@ services:
       # JWT
       - key: JWT_SECRET
         generateValue: true
+      - key: JWT_EXPIRES
+        value: 24h
+      # Entorno y CORS
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGINS
+        value: https://traductor-backend-hrdf.onrender.com
       # Default user
       - key: USER_ID
         value: "2"

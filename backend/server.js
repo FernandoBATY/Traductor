@@ -1,6 +1,7 @@
 const express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 const httpProxy = require('http-proxy');
 const { spawn } = require('child_process');
@@ -12,9 +13,48 @@ const app = express();
 // Conectar a la base de datos
 connectDB();
 
+// Cabeceras de seguridad (helmet) con CSP acorde a la app: Tailwind CDN, fuentes de Google,
+// MediaPipe (jsdelivr + storage.googleapis) e imágenes del diccionario (catbox.moe).
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "data:"],
+            imgSrc: ["'self'", "data:", "blob:", "https://files.catbox.moe"],
+            mediaSrc: ["'self'", "blob:"],
+            connectSrc: ["'self'", "https://cdn.jsdelivr.net", "https://storage.googleapis.com"],
+            workerSrc: ["'self'", "blob:"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'none'"],
+            upgradeInsecureRequests: []
+        }
+    },
+    crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'same-origin' }
+}));
+
+// CORS restringido a orígenes permitidos
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,https://traductor-backend-hrdf.onrender.com')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin(origin, callback) {
+        // Peticiones sin Origin (curl, server-to-server, misma origin) se permiten
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(null, false);
+    }
+}));
+
 // Middleware
-app.use(express.json({ extended: false }));
-app.use(cors());
+app.use(express.json({ extended: false, limit: '100kb' }));
 
 // Serve static files from the "frontend/templates" directory
 app.use(express.static(path.join(__dirname, '../frontend/templates')));

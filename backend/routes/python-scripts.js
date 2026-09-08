@@ -7,10 +7,14 @@ const axios = require('axios');
 const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://127.0.0.1:5000'; // 127.0.0.1 evita que Node use IPv6 (::1) y no encuentre a Flask
 const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://127.0.0.1:5001';
 const auth = require('../middleware/auth');
+const rateLimit = require('../middleware/rateLimit');
 
 // Todas las rutas de este router exigen un token JWT válido.
 // El userId siempre se toma del token (nunca del query/body), evitando manipular datos ajenos.
 router.use(auth);
+
+// Tocho por IP en todo /api/python (autenticado) para acotar abusos/DoS.
+router.use(rateLimit({ windowMs: 60000, max: 600 }));
 
 // ============ Diagnostic Routes ============
 
@@ -103,11 +107,36 @@ router.post('/capture-image', (req, res) => {
         return res.status(400).json({ success: false, message: 'userId and letter are required.' });
     }
 
+    // Validación estricta de la letra (A-Z) + normalización
+    const normalizedLetter = String(letter).trim().toUpperCase();
+    if (!/^[A-Z]$/.test(normalizedLetter)) {
+        return res.status(400).json({ success: false, message: 'letter debe ser una letra de A a Z.' });
+    }
+
+    const MAX_BYTES = 2 * 1024 * 1024; // 2 MB (un JPEG de webcam ronda los 30–100 KB)
     const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
+    let total = 0;
+    let tooBig = false;
+
+    req.on('data', (chunk) => {
+        if (tooBig) return;
+        total += chunk.length;
+        if (total > MAX_BYTES) {
+            tooBig = true;
+            if (!res.headersSent) {
+                res.status(413).json({ success: false, message: 'Imagen demasiado grande.' });
+            }
+            chunks.length = 0;
+            req.pause();
+            return;
+        }
+        chunks.push(chunk);
+    });
+
     req.on('end', () => {
+        if (tooBig) return;
         const body = Buffer.concat(chunks);
-        axios.post(`${FLASK_CAPTURE_URL}/capture_image?userId=${userId}&letter=${letter}`, body, {
+        axios.post(`${FLASK_CAPTURE_URL}/capture_image?userId=${userId}&letter=${normalizedLetter}`, body, {
             headers: { 'Content-Type': (req.headers['content-type'] || 'image/jpeg') }
         })
             .then(response => {
