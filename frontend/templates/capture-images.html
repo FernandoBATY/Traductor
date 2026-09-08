@@ -150,7 +150,7 @@
             <div class="lg:col-span-2 flex flex-col gap-4">
 <!-- Media Player Container -->
                     <div class="bg-white dark:bg-background-dark border border-[#cee8d7] dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
-<div class="relative flex items-center justify-center bg-gray-200 dark:bg-gray-800 aspect-video group">
+<div id="cameraBox" class="relative flex items-center justify-center bg-gray-200 dark:bg-gray-800 aspect-video group">
                         <!-- Video Feed (getUserMedia, espejado) -->
                         <video id="videoFeed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover -scale-x-100"></video>
                         <canvas id="captureCanvas" class="hidden"></canvas>
@@ -310,6 +310,10 @@
             showNotification('Solicitando acceso a la cámara...');
             startCamera();
 
+            // Adaptar el recuadro de la cámara al girar o redimensionar
+            window.addEventListener('resize', applyCameraAspect);
+            window.addEventListener('orientationchange', () => setTimeout(applyCameraAspect, 300));
+
             // Detener cámara al salir de la página
             const closeCapture = () => stopCamera();
             window.addEventListener('beforeunload', closeCapture);
@@ -379,6 +383,17 @@
             }
         }
 
+        // Ajusta el recuadro de la cámara a la orientación del video:
+        // vertical (móvil en retrato) o 16:9 apaisado (PC/móvil rotado)
+        function applyCameraAspect() {
+            const box = document.getElementById('cameraBox');
+            const video = document.getElementById('videoFeed');
+            if (!box || !video || !video.videoWidth) return;
+            const portrait = video.videoHeight > video.videoWidth;
+            box.style.aspectRatio = portrait ? '3 / 4' : '16 / 9';
+            box.style.maxHeight = portrait ? '72vh' : '70vh';
+        }
+
         function startCamera() {
             const video = document.getElementById('videoFeed');
             if (!video) return;
@@ -391,6 +406,7 @@
                 .then(stream => {
                     videoEl = video;
                     video.srcObject = stream;
+                    video.onloadedmetadata = applyCameraAspect;
                     video.play().catch(() => {});
                     showNotification('Cámara lista. Escribe una letra y captura tu gesto.');
                 })
