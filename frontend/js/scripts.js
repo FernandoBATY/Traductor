@@ -83,6 +83,7 @@ async function login() {
         const data = await response.json();
         if (data.token) {
             showCustomAlert('Inicio de sesión exitoso', 'success');
+            localStorage.setItem('token', data.token);
             localStorage.setItem('userId', data.user.id);
             localStorage.setItem('userName', data.user.username);
             setTimeout(() => {

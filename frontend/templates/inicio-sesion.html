@@ -6,7 +6,6 @@
 <title>Acceso y Registro Profesional - V1</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 <script id="tailwind-config">
 tailwind.config = {
@@ -334,6 +333,7 @@ function goToTranslator(){
 	window.location.href = `visualize-model.html?userId=${uid}`;
 }
 function logout(){
+	localStorage.removeItem('token');
 	localStorage.removeItem('userId');
 	localStorage.removeItem('userName');
 	checkAuth();

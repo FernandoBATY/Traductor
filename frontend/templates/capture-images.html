@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
         <script src="../js/custom-alert.js"></script>
+        <script src="../js/auth.js"></script>
     <script src="../js/mobile-nav.js"></script>
     <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
     <script id="tailwind-config">
@@ -257,6 +258,7 @@
             window.location.href = `visualize-model.html?userId=${uid}`;
         }
         function logout(){
+            localStorage.removeItem('token');
             localStorage.removeItem('userId');
             localStorage.removeItem('userName');
             checkAuth();
@@ -457,6 +459,7 @@
                 }
                 fetch(`/api/python/capture-image?userId=${userId}&letter=${letter}`, {
                     method: 'POST',
+                    headers: authHeaders(),
                     body: blob
                 })
                 .then(response => response.json())
@@ -478,7 +481,7 @@
         function updateCaptureCounter() {
             const userId = localStorage.getItem('userId');
             // Make a request to count captured images
-            fetch(`/api/python/count-images?userId=${userId}`)
+            fetch(`/api/python/count-images?userId=${userId}`, { headers: authHeaders() })
                 .then(response => response.json())
                 .then(data => {
                     const totalCount = data.total || 0;
@@ -496,7 +499,8 @@
             showNotification('Entrenando modelo... esto puede tomar unos minutos.');
 
             fetch(`/api/python/train-model?userId=${userId}`, {
-                method: 'POST'
+                method: 'POST',
+                headers: authHeaders()
             })
                 .then(response => {
                     // Handle both 200 and 500 responses

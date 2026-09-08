@@ -4,11 +4,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { check, validationResult } = require('express-validator');
 const User = require('../models/User');
+const rateLimit = require('../middleware/rateLimit');
 
+const loginLimiter = rateLimit({ windowMs: 60000, max: 10 });
+const registerLimiter = rateLimit({ windowMs: 60000, max: 5 });
 
 // Ruta de inicio de sesión
 router.post(
     '/login',
+    loginLimiter,
     [
         check('email', 'Por favor incluye un correo electrónico válido').isEmail(),
         check('password', 'La contraseña es requerida').exists()
@@ -52,11 +56,10 @@ router.post(
     }
 );
 
-module.exports = router;
-
 // Ruta de registro
 router.post(
     '/register',
+    registerLimiter,
     [
         check('username', 'Nombre de usuario es requerido').not().isEmpty(),
         check('email', 'Por favor incluye un correo electrónico válido').isEmail(),
@@ -91,7 +94,7 @@ router.post(
                 { expiresIn: 360000 },
                 (err, token) => {
                     if (err) throw err;
-                    res.json({ token });
+                    res.json({ token, user: { id: userId, email, username } });
                 }
             );
         } catch (err) {

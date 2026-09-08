@@ -222,7 +222,6 @@ Visualización
 </main>
 </div>
 
-<script src="../js/custom-alert.js"></script>
 <script>
     // Theme helpers
     function updateThemeIcon(){
@@ -295,6 +294,7 @@ Visualización
     }
 
     function logout() {
+        localStorage.removeItem('token');
         localStorage.removeItem('userId');
         localStorage.removeItem('userName');
         checkAuth();

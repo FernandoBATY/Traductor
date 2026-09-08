@@ -6,6 +6,11 @@ const fs = require('fs');
 const axios = require('axios');
 const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://127.0.0.1:5000'; // 127.0.0.1 evita que Node use IPv6 (::1) y no encuentre a Flask
 const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://127.0.0.1:5001';
+const auth = require('../middleware/auth');
+
+// Todas las rutas de este router exigen un token JWT válido.
+// El userId siempre se toma del token (nunca del query/body), evitando manipular datos ajenos.
+router.use(auth);
 
 // ============ Diagnostic Routes ============
 
@@ -46,7 +51,7 @@ router.post('/stop-service', (req, res) => {
 
 // Proxy video feed from captura_imagenes.py (port 5001)
 router.get('/capture-video-feed', async (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     if (!userId) {
         return res.status(400).send('userId query parameter is required.');
     }
@@ -127,7 +132,7 @@ router.post('/capture-camera/set/:index', async (req, res) => {
 
 // Count images captured for a given userId
 router.get('/count-images', (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     if (!userId) {
         return res.status(400).json({ success: false, message: 'userId is required.' });
     }
@@ -172,7 +177,7 @@ router.get('/count-images', (req, res) => {
 // Capture a single image for a given letter and userId.
 // El navegador envía la imagen (JPEG binario) en el cuerpo de la petición.
 router.post('/capture-image', (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     const letter = req.query.letter;
 
     if (!userId || !letter) {
@@ -211,7 +216,7 @@ async function checkCapturaHealth() {
 
 // Start captura_imagenes.py Flask server
 router.get('/start-capture', async (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     if (!userId) {
         return res.status(400).send('userId query parameter is required.');
     }
@@ -295,7 +300,7 @@ router.get('/start-capture', async (req, res) => {
 
 // Train model for a given userId
 router.post('/train-model', (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     if (!userId) {
         return res.status(400).json({ success: false, message: 'userId is required.' });
     }
@@ -332,7 +337,7 @@ router.post('/train-model', (req, res) => {
 
 // Proxy video feed from reconocimiento.py (port 5000)
 router.get('/recognize-video-feed', async (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     if (!userId) {
         return res.status(400).send('userId query parameter is required.');
     }
@@ -382,7 +387,7 @@ async function checkReconocimientoHealth() {
 
 // Start reconocimiento.py Flask server
 router.get('/start-recognition', async (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     if (!userId) {
         return res.status(400).send('userId query parameter is required.');
     }
@@ -465,7 +470,7 @@ router.get('/start-recognition', async (req, res) => {
 // Cargar modelo sin tocar cámara (modo navegador con getUserMedia)
 router.post('/load-model', async (req, res) => {
     try {
-        const userId = req.query.userId || req.body.userId;
+        const userId = req.userId;
         const model = (req.query.model || req.body.model || 'user').toString().toLowerCase();
         if (!userId) {
             return res.status(400).json({ success: false, message: 'userId parameter required' });
@@ -477,11 +482,19 @@ router.post('/load-model', async (req, res) => {
             console.log(`Model loaded for user ${modelUser} (seleccion: ${model})`);
             return res.json({ success: true, modelLoaded: true, message: `Modelo listo (${model === 'base' ? 'base' : 'personalizado'}).` });
         } catch (loadError) {
-            console.warn(`Model not loaded for user ${modelUser}:`, loadError.response?.data || loadError.message);
-            return res.json({
-                success: true,
-                modelLoaded: false,
-                message: 'No hay modelo entrenado para este usuario. Se usará el modelo base al detectar.'
+            if (loadError.response && loadError.response.status === 404) {
+                // No hay modelo de ese usuario: se usará el base al detectar (comportamiento normal)
+                return res.json({
+                    success: true,
+                    modelLoaded: false,
+                    message: 'No hay modelo entrenado para este usuario. Se usará el modelo base al detectar.'
+                });
+            }
+            // Error real (servicio caído o fallo interno): se reporta para que el front muestre el problema
+            console.error(`Error cargando modelo para ${modelUser}:`, loadError.response?.data || loadError.message);
+            return res.status(503).json({
+                success: false,
+                message: 'El servicio de reconocimiento no pudo cargar el modelo.'
             });
         }
     } catch (e) {
@@ -508,7 +521,7 @@ router.post('/predecir', async (req, res) => {
 // Camera control for reconocimiento service
 router.post('/recognition-camera/open', async (req, res) => {
     try {
-        const userId = req.query.userId || req.body.userId;
+        const userId = req.userId;
         const model = (req.query.model || req.body.model || 'user').toString().toLowerCase();
         if (!userId) {
             return res.status(400).json({ success: false, message: 'userId parameter required' });
@@ -601,7 +614,7 @@ router.get('/health', async (req, res) => {
 
 // Diagnostic endpoint: List all captured images
 router.get('/debug/list-captured-images', (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.userId;
     if (!userId) {
         return res.status(400).json({ success: false, message: 'userId required' });
     }

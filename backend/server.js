@@ -18,13 +18,6 @@ connectDB();
 app.use(express.json({ extended: false }));
 app.use(cors());
 
-// Add logging middleware for debugging static files
-app.use('/static', (req, res, next) => {
-    console.log(`[DEBUG STATIC] Request: ${req.method} ${req.originalUrl}`);
-    console.log(`[DEBUG STATIC] Looking in: ${path.join(__dirname, '../frontend/static', req.url)}`);
-    next();
-});
-
 // Serve static files from the "frontend/templates" directory
 app.use(express.static(path.join(__dirname, '../frontend/templates')));
 
@@ -37,7 +30,6 @@ app.use('/css', express.static(path.join(__dirname, '../frontend/css')));
 // Serve static files from the "frontend/static" directory with better error handling
 app.use('/static', express.static(path.join(__dirname, '../frontend/static'), {
     setHeaders: (res, filePath) => {
-        console.log(`[EXPRESS STATIC] Serving: ${filePath}`);
         if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
             res.setHeader('Content-Type', 'image/jpeg');
         }
@@ -47,10 +39,8 @@ app.use('/static', express.static(path.join(__dirname, '../frontend/static'), {
 // Ensure the auth route is correctly registered
 app.use('/api/auth', require('./routes/auth'));
 
-// Ensure the script route is correctly registered
-app.use('/api', require('./routes/script'));
-
-// Python scripts routes (capture, train, recognition)
+// Python scripts routes (capture, train, recognition).
+// Nota: la ruta heredada "script.js" (ejecución de scripts arbitrarios) ya NO se monta.
 app.use('/api/python', require('./routes/python-scripts'));
 
 // Serve a placeholder favicon to avoid missing file errors
@@ -78,17 +68,6 @@ app.get('/api/health', async (req, res) => {
     } catch (error) {
         console.error('Error proxying health check:', error.message);
         res.status(500).send('Error proxying health check.');
-    }
-});
-
-// Proxy requests to /api/start-reconocim iento to the Flask server
-app.get('/api/start-reconocimiento', async (req, res) => {
-    try {
-        const response = await axios.get(`${FLASK_REC_URL}/visualize-model`); // Correctly forward to Flask
-        res.send(response.data);
-    } catch (error) {
-        console.error('Error proxying start-reconocimiento:', error.message);
-        res.status(500).send('Error starting Flask server.');
     }
 });
 

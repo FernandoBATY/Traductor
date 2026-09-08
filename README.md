@@ -102,6 +102,10 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 ## Funcionalidades
 
 - **Registro / inicio de sesión** con JWT y contraseñas cifradas (bcrypt).
+- **Seguridad**: rutas de `/api/python` protegidas con middleware JWT (el `userId` se toma del
+  token) y **rate-limit** en `login`/`register`.
+- **Cámara en espejo** (modo espejo): reconocimiento, captura y feeds Flask se muestran invertidos
+  horizontalmente para una experiencia natural al hacer señas.
 - **Diccionario** de gestos del alfabeto.
 - **Captura de imágenes** para entrenar un modelo propio.
 - **Entrenamiento de modelo personalizado** por usuario.
@@ -123,7 +127,8 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 │   ├── server.js               # Express: API, estáticos, spawn de Flask y proxy
 │   ├── config/db.js            # Conexión MySQL (mysql2)
 │   ├── models/User.js          # Consultas de usuarios
-│   ├── routes/                 # auth.js, script.js, python-scripts.js
+│   ├── middleware/             # auth.js (JWT), rateLimit.js
+│   ├── routes/                 # auth.js, python-scripts.js (script.js quedó sin montar)
 │   ├── scripts/postinstall.js  # Instala dependencias de Python tras npm install
 │   ├── python/                 # Scripts ML
 │   │   ├── reconocimiento.py   # Flask ($FLASK_REC_PORT) — predicción de gestos
@@ -162,16 +167,25 @@ Ya resuelto:
    por lo que siempre existen en el despliegue.
 5. **Frontend responsivo** y sin dependencia de cámara del servidor.
 
+6. **Seguridad aplicada** — todas las rutas de `/api/python` exigen un **token JWT**
+   (`Authorization: Bearer <token>`); el `userId` se toma del token, nunca del query/body
+   (no se puede manipular). `login`/`register` tienen **rate-limit** (10 y 5 por minuto por IP).
+7. **Cámara en espejo** — los feeds de reconocimiento y captura se muestran en modo espejo
+   (más cómodo al hacer señas): `cv2.flip(frame,1)` en `reconocimiento.py` y `captura_imagenes.py`,
+   y `-scale-x-100` en los `<video>` del navegador.
+
 Pendientes / limitaciones a tener en cuenta:
 
 1. **Disco efímero de Render** — los modelos que entrenen los usuarios (`usuarios-entrenamientos/`)
    se pierden al redeployar. El modelo base (en el repo) siempre sobrevive. Para persistir modelos
    habría que usar un volumen o un bucket (S3 / R2).
-2. **`JWT_SECRET` real** — configúralo en el panel de Render (hoy cae a `'secret'` si no existe).
+2. **`JWT_SECRET` real** — configúralo en el panel de Render (la app lo firma con `'secret'`
+   si no existe la variable, lo cual es inseguro en producción).
 3. **Los servicios duermen tras ~15 min** sin uso en el plan gratuito — la primera carga puede
    tardar ~50 s.
-4. **Seguridad**: las rutas de `/api/python` no están protegidas con middleware JWT (cualquier
-   cliente puede pasar un `userId` arbitrario).
+4. **Al iniciar sesión, antes de usar esta versión** — si tenías una sesión vieja en el navegador
+   (sin token), vuelve a iniciar sesión para obtener el token JWT; las llamadas a `/api/python`
+   devuelven `401` sin él.
 5. **Tailwind por CDN** — funcional para el proyecto, pero en producción conviene compilarlo.
 6. **postinstall de Python** en `npm install` — pensado para Windows; en Render se instalan los
    paquetes con el propio `requirements.txt`.
