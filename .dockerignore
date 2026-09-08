@@ -8,3 +8,15 @@ node_modules/
 README.md
 LICENSE
 *.md
+
+# Datos efímeros de usuarios y modelos entrenados: no deben entrar en la imagen.
+# (El runtime los recrea; el modelo base sí se conserva.)
+backend/usuarios-entrenamientos/
+backend/modelos/1/
+backend/modelos/2/
+
+# Logs y basura local
+logs/
+*.log
+*.tmp
+.DS_Store

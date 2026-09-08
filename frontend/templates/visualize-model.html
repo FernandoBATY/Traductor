@@ -105,6 +105,10 @@
             </button>
             <div id="userSection" class="hidden flex items-center gap-2 sm:gap-3">
                 <span class="text-sm text-gray-600 dark:text-gray-300 hidden md:inline">Hola, <span id="userName" class="font-bold text-primary"></span></span>
+                <a href="cuenta.html" class="flex items-center gap-1 px-3 sm:px-4 h-10 rounded-xl bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20" title="Mi cuenta">
+                    <span class="material-symbols-outlined text-base">account_circle</span>
+                    <span class="hidden sm:inline">Mi cuenta</span>
+                </a>
                 <button onclick="logout()" class="flex items-center gap-1 px-3 sm:px-4 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-semibold hover:bg-red-500/20" title="Cerrar sesión">
                     <span class="material-symbols-outlined text-base">logout</span>
                     <span class="hidden sm:inline">Cerrar sesión</span>
@@ -402,11 +406,10 @@ function stopCamera() {
         }
         function goToTranslator(){ window.location.href = 'visualize-model.html'; }
         function logout(){
-            localStorage.removeItem('token');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userName');
-            checkAuth();
-            showCustomAlert('Sesión cerrada', 'success');
+            serverLogout().then(() => {
+                checkAuth();
+                showCustomAlert('Sesión cerrada', 'success');
+            });
         }
 
         function showNotification(message) {

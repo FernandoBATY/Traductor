@@ -92,18 +92,35 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 | `DB_PORT` | `3306` | Puerto de MySQL (con `parseInt` para evitar errores) |
 | `DB_NAME` | `usuarios` | Nombre de la base de datos |
 | `PORT` | `3000` | Puerto del servidor Node (Render lo asigna) |
-| `JWT_SECRET` | `secret` | Secreto para firmar tokens (usar uno real en producción) |
+| `JWT_SECRET` | `secret` | Secreto para firmar tokens (en producción: obligatorio, ≥32 caracteres, el server aborta si no) |
+| `JWT_EXPIRES` | `24h` | Duración del token (renovable con `/api/auth/refresh`) |
 | `USER_ID` | `1` | Usuario por defecto para el reconocimiento |
 | `FLASK_REC_URL` | `http://localhost:5000` | URL del servicio Flask de reconocimiento |
 | `FLASK_CAPTURE_URL` | `http://localhost:5001` | URL del servicio Flask de captura |
 | `FLASK_REC_PORT` | `5000` | Puerto interno de `reconocimiento.py` (no usar `PORT` de Render) |
 | `FLASK_CAPTURE_PORT` | `5001` | Puerto interno de `captura_imagenes.py` |
+| `APP_URL` | `http://localhost:3000` | URL pública de la app (se usa en los enlaces de recuperación de contraseña) |
+| `SMTP_HOST` | *(vacío)* | Host SMTP para enviar correos de recuperación. Si no se configura, en desarrollo el backend devuelve el enlace de reset en la respuesta y en producción solo lo registra en logs |
+| `SMTP_PORT` | `587` | Puerto SMTP |
+| `SMTP_SECURE` | `false` | Usar TLS (`true` para 465) |
+| `SMTP_USER` / `SMTP_PASS` | *(vacío)* | Credenciales SMTP (opcionales si el relay no requiere auth) |
+| `SMTP_FROM` | *(vacío)* | Remitente de los correos (default: `SMTP_USER`) |
 
 ## Funcionalidades
 
 - **Registro / inicio de sesión** con JWT y contraseñas cifradas (bcrypt).
+- **Gestión de cuenta** (`cuenta.html`): editar nombre/correo, cambiar contraseña y eliminar cuenta
+  (borra perfil, imágenes capturadas y modelos del usuario).
+- **Recuperación de contraseña** por correo (token de un solo uso, 30 min): `recuperar-contrasena.html`
+  solicita el enlace y `restablecer-contrasena.html` lo canjea. Requiere SMTP configurado para entregar el correo.
+- **Sesiones revocables y renovables**: cada JWT incluye una versión de token; cerrar sesión o cambiar
+  contraseña revoca todas las sesiones, y `/api/auth/refresh` renueva el token antes de expirar sin pedir
+  credenciales (el front lo hace solo cada 5 minutos).
 - **Seguridad**: rutas de `/api/python` protegidas con middleware JWT (el `userId` se toma del
-  token) y **rate-limit** en `login`/`register`.
+  token) y **rate-limit** en `login`/`register`/`forgot`/`reset`.
+- **Observabilidad**: logs JSON estructurados a stdout, registro de cada petición con duración y
+  estado, alerta en logs por picos de 5xx, monitor de salud de los servicios Flask (avisa cuando caen
+  o se recuperan) y endpoints `/healthz` y `/api/ops/stats`.
 - **Cámara en espejo** (modo espejo): reconocimiento, captura y feeds Flask se muestran invertidos
   horizontalmente para una experiencia natural al hacer señas.
 - **Diccionario** de gestos del alfabeto.
@@ -124,11 +141,12 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 ├── .env.example                # Plantilla de variables de entorno
 ├── run_system.bat              # Arranque local en Windows
 ├── backend/
-│   ├── server.js               # Express: API, estáticos, spawn de Flask y proxy
-│   ├── config/db.js            # Conexión MySQL (mysql2)
-│   ├── models/User.js          # Consultas de usuarios
-│   ├── middleware/             # auth.js (JWT), rateLimit.js
-│   ├── routes/                 # auth.js (auth), python-scripts.js (orquestación IA)
+│   ├── server.js               # Express: API, estáticos, spawn de Flask, proxy y observabilidad
+│   ├── config/db.js            # Pool MySQL (mysql2) + auto-esquema (token_version, password_resets)
+│   ├── models/                 # User.js, PasswordReset.js
+│   ├── middleware/             # auth.js (JWT + revocación), rateLimit.js, requestLogger.js
+│   ├── routes/                 # auth.js (auth/cuenta/reset), python-scripts.js (orquestación IA)
+│   ├── utils/                  # logger.js, healthMonitor.js (Flask), mailer.js (nodemailer)
 │   ├── scripts/postinstall.js  # Instala dependencias de Python tras npm install
 │   ├── python/                 # Scripts ML
 │   │   ├── reconocimiento.py   # Flask ($FLASK_REC_PORT) — API pura de predicción
@@ -143,8 +161,9 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 │   ├── modelos/base/           # Modelo base compartido (solo este se sube al repo)
 │   └── usuarios-entrenamientos/ # Imágenes de entrenamiento por usuario (ignorado en git)
 └── frontend/
-    ├── templates/              # Páginas HTML (index, diccionario, visualización, captura, login)
-    ├── js/                     # JavaScript del frontend (incl. mobile-nav.js, scripts.js, custom-alert.js)
+    ├── templates/              # Páginas HTML (index, diccionario, visualización, captura, login,
+    │                           # cuenta.html, recuperar-contrasena.html, restablecer-contrasena.html)
+    ├── js/                     # JavaScript del frontend (incl. auth.js, mobile-nav.js, scripts.js, custom-alert.js)
     ├── css/                    # Estilos
     └── static/                 # Recursos estáticos
 ```
@@ -182,8 +201,8 @@ Pendientes / limitaciones a tener en cuenta:
 1. **Disco efímero de Render** — los modelos que entrenen los usuarios (`usuarios-entrenamientos/`)
    se pierden al redeployar. El modelo base (en el repo) siempre sobrevive. Para persistir modelos
    habría que usar un volumen o un bucket (S3 / R2).
-2. **`JWT_SECRET` real** — configúralo en el panel de Render (la app lo firma con `'secret'`
-   si no existe la variable, lo cual es inseguro en producción).
+2. **SMTP** — para que el correo de recuperación llegue al usuario hay que configurar `SMTP_*` en el
+   panel de Render. Sin SMTP, en producción el enlace solo queda registrado en los logs.
 3. **Los servicios duermen tras ~15 min** sin uso en el plan gratuito — la primera carga puede
    tardar ~50 s.
 4. **Al iniciar sesión, antes de usar esta versión** — si tenías una sesión vieja en el navegador
@@ -192,6 +211,10 @@ Pendientes / limitaciones a tener en cuenta:
 5. **Tailwind por CDN** — funcional para el proyecto, pero en producción conviene compilarlo.
 6. **postinstall de Python** en `npm install` — pensado para Windows; en Render se instalan los
    paquetes con el propio `requirements.txt`.
+7. **Rate-limit en memoria** — por proceso; con una sola instancia de Render es correcto, pero si se
+   escala a varias instancias habría que usar un almacén compartido (Redis).
+8. **Cambiar contraseña / eliminar cuenta revocan la sesión en curso** — el front recibe un token
+   nuevo (cambio de contraseña) o vuelve a login (eliminar cuenta).
 
 ## Solución de problemas
 

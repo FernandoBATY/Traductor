@@ -18,8 +18,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
 WORKDIR /app
 
 # Install Python dependencies
-# Incluye TensorFlow (necesario para el entrenamiento) - PERO el reconocimiento usa
-# tflite-runtime y no carga TF en memoria salvo cuando se entrena bajo demanda.
+# Incluye TensorFlow (necesario para el entrenamiento bajo demanda) - PERO el reconocimiento
+# usa tflite-runtime y no carga TF en memoria salvo cuando se entrena on-demand.
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    NODE_ENV=production
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -31,3 +31,20 @@ services:
       # Default user
       - key: USER_ID
         value: "2"
+      # URL pública (enlaces de recuperación de contraseña)
+      - key: APP_URL
+        value: https://traducer-backend-hrdf.onrender.com
+      # SMTP para el correo de recuperación. Requerido para que el usuario reciba el
+      # enlace por email. Configurar en el panel (sync: false para no mostrarse en el repo).
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false

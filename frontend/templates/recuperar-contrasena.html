@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+<meta charset="utf-8" />
+<meta content="width=device-width, initial-scale=1.0" name="viewport" />
+<title>Recuperar contraseña</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+<script id="tailwind-config">
+tailwind.config = {
+darkMode: "class",
+theme: {
+extend: {
+colors: {
+primary: "#0df259",
+"background-light": "#f5f8f6",
+"background-dark": "#102216",
+},
+fontFamily: {
+display: ["Lexend", "sans-serif"],
+},
+borderRadius: {
+DEFAULT: "0.5rem",
+lg: "1rem",
+xl: "1.5rem",
+full: "9999px",
+},
+},
+},
+};
+</script>
+<style>
+.material-symbols-outlined {
+font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+</style>
+<script src="../js/custom-alert.js"></script>
+<script src="../js/mobile-nav.js"></script>
+<script src="../js/auth.js"></script>
+<script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col">
+<header class="w-full px-4 sm:px-6 lg:px-20 py-4 sm:py-6 flex items-center justify-between bg-white/80 dark:bg-background-dark/80 backdrop-blur border-b border-gray-200 dark:border-white/10">
+<div class="flex items-center gap-3 text-background-dark dark:text-white">
+<div class="size-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined">sign_language</span>
+</div>
+<h2 class="text-lg sm:text-xl font-bold tracking-tight truncate">Recuperar contraseña</h2>
+</div>
+<button onclick="goHome()" class="flex items-center gap-2 px-4 h-10 rounded-xl bg-gray-100 dark:bg-white/10 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-white/20">
+<span class="material-symbols-outlined text-base">home</span>
+Inicio
+</button>
+</header>
+
+<main class="flex-1 flex items-center justify-center p-4 sm:p-6">
+<div class="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 sm:p-10">
+<h1 class="text-2xl font-bold text-background-dark dark:text-white mb-2">Recupera tu acceso</h1>
+<p class="text-gray-500 dark:text-gray-400 mb-8">Ingresa el correo con el que te registraste. Si la cuenta existe, recibirás un enlace para restablecer tu contraseña (válido por 30 minutos).</p>
+
+<form class="space-y-6" onsubmit="event.preventDefault(); enviarRecuperacion();">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-background-dark dark:text-gray-200">Correo electrónico</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">mail</span>
+<input id="emailRecuperacion" type="email" placeholder="ejemplo@correo.com" class="w-full pl-12 pr-4 h-14 bg-background-light dark:bg-background-dark border-none rounded-xl focus:ring-2 focus:ring-primary text-background-dark dark:text-white transition-all placeholder:text-gray-400" />
+</div>
+</div>
+<button id="btnEnviar" type="submit" class="w-full h-14 bg-primary hover:bg-opacity-90 text-background-dark font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+<span>Enviar enlace</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</form>
+
+<div id="copiarEnlace" class="hidden mt-6 bg-primary/10 border border-primary/30 rounded-xl p-4">
+<p class="text-sm text-background-dark dark:text-white font-semibold mb-2">Modo desarrollo (SMTP no configurado): guarda este enlace antes de cerrar esta página.</p>
+<a id="resetLink" href="#" class="block text-xs text-primary underline break-all mb-3"></a>
+<button onclick="copiarEnlace()" class="px-4 py-2 rounded-lg bg-primary text-background-dark text-sm font-semibold hover:bg-opacity-90">Copiar enlace</button>
+</div>
+
+<div class="mt-6 text-center">
+<a href="inicio-sesion.html" class="text-sm font-semibold text-primary hover:underline">Volver a iniciar sesión</a>
+</div>
+</div>
+</main>
+
+<footer class="w-full py-8 text-center">
+<p class="text-xs text-gray-400">© 2024 Signly. Todos los derechos reservados.</p>
+</footer>
+
+<script>
+function goHome(){ window.location.href = 'index.html'; }
+
+function copiarEnlace(){
+	const link = document.getElementById('resetLink').href;
+	navigator.clipboard.writeText(link).then(() => {
+		showCustomAlert('Enlace copiado', 'success');
+	}).catch(() => showCustomAlert('No se pudo copiar', 'error'));
+}
+
+async function enviarRecuperacion(){
+	const email = document.getElementById('emailRecuperacion').value.trim();
+	const btn = document.getElementById('btnEnviar');
+
+	if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+		showCustomAlert('Ingresa un correo válido', 'warning');
+		return;
+	}
+
+	btn.disabled = true;
+	btn.innerHTML = '<span>Enviando...</span>';
+
+	try {
+		const response = await fetch('/api/auth/forgot-password', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email })
+		});
+		const data = await response.json();
+
+		if (!response.ok) {
+			showCustomAlert(data.msg || 'Error al procesar la solicitud', 'error');
+			return;
+		}
+
+		showCustomAlert(data.msg, 'success');
+
+		// Sin SMTP en desarrollo el backend devuelve el enlace para poder probar el flujo
+		if (data.resetLink) {
+			const box = document.getElementById('copiarEnlace');
+			const link = document.getElementById('resetLink');
+			link.href = data.resetLink;
+			link.textContent = data.resetLink;
+			box.classList.remove('hidden');
+		}
+	} catch (e) {
+		console.error(e);
+		showCustomAlert('Error de conexión. Intenta de nuevo.', 'error');
+	} finally {
+		btn.disabled = false;
+		btn.innerHTML = '<span>Enviar enlace</span><span class="material-symbols-outlined">arrow_forward</span>';
+	}
+}
+</script>
+</body>
+</html>

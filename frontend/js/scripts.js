@@ -27,7 +27,7 @@ async function register() {
     }
 
     if (!validatePassword(password)) {
-        showCustomAlert('La contraseña debe tener al menos 6 caracteres e incluir números y letras.', 'warning');
+        showCustomAlert('La contraseña debe tener al menos 8 caracteres e incluir números y letras.', 'warning');
         return;
     }
 
@@ -41,14 +41,17 @@ async function register() {
         });
 
         const data = await response.json();
-        if (response.status === 200) {
+        if (response.ok && data.token) {
             showCustomAlert('Usuario registrado con éxito', 'success');
-            // Redirigir a la página de inicio de sesión
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('userId', data.user.id);
+            localStorage.setItem('userName', data.user.username);
+            scheduleTokenRefresh();
             setTimeout(() => {
-                container.classList.remove("right-panel-active");
+                window.location.href = 'index.html';
             }, 1500);
         } else {
-            showCustomAlert(data.msg, 'error');
+            showCustomAlert(data.msg || 'Error al registrar el usuario', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -86,6 +89,7 @@ async function login() {
             localStorage.setItem('token', data.token);
             localStorage.setItem('userId', data.user.id);
             localStorage.setItem('userName', data.user.username);
+            scheduleTokenRefresh();
             setTimeout(() => {
                 window.location.href = 'index.html';
             }, 1500);
@@ -104,7 +108,7 @@ function validateEmail(email) {
 
 // Validación de contraseña
 function validatePassword(password) {
-    const re = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/; // Al menos 6 caracteres, una letra y un número
+    const re = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/; // Al menos 8 caracteres, una letra y un número
     return re.test(password);
 }
 

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+<meta charset="utf-8" />
+<meta content="width=device-width, initial-scale=1.0" name="viewport" />
+<title>Restablecer contraseña</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+<script id="tailwind-config">
+tailwind.config = {
+darkMode: "class",
+theme: {
+extend: {
+colors: {
+primary: "#0df259",
+"background-light": "#f5f8f6",
+"background-dark": "#102216",
+},
+fontFamily: {
+display: ["Lexend", "sans-serif"],
+},
+borderRadius: {
+DEFAULT: "0.5rem",
+lg: "1rem",
+xl: "1.5rem",
+full: "9999px",
+},
+},
+},
+};
+</script>
+<style>
+.material-symbols-outlined {
+font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+</style>
+<script src="../js/custom-alert.js"></script>
+<script src="../js/mobile-nav.js"></script>
+<script src="../js/auth.js"></script>
+<script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col">
+<header class="w-full px-4 sm:px-6 lg:px-20 py-4 sm:py-6 flex items-center justify-between bg-white/80 dark:bg-background-dark/80 backdrop-blur border-b border-gray-200 dark:border-white/10">
+<div class="flex items-center gap-3 text-background-dark dark:text-white">
+<div class="size-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined">sign_language</span>
+</div>
+<h2 class="text-lg sm:text-xl font-bold tracking-tight truncate">Restablecer contraseña</h2>
+</div>
+<button onclick="goHome()" class="flex items-center gap-2 px-4 h-10 rounded-xl bg-gray-100 dark:bg-white/10 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-white/20">
+<span class="material-symbols-outlined text-base">home</span>
+Inicio
+</button>
+</header>
+
+<main class="flex-1 flex items-center justify-center p-4 sm:p-6">
+<div id="formCard" class="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 sm:p-10">
+<h1 class="text-2xl font-bold text-background-dark dark:text-white mb-2">Nueva contraseña</h1>
+<p class="text-gray-500 dark:text-gray-400 mb-8">Define una nueva contraseña para tu cuenta. Debe tener al menos 8 caracteres, con letras y números.</p>
+
+<form class="space-y-6" onsubmit="event.preventDefault(); restablecer();">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-background-dark dark:text-gray-200">Nueva contraseña</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">lock</span>
+<input id="passwordNueva" type="password" placeholder="Mínimo 8 caracteres" class="w-full pl-12 pr-12 h-14 bg-background-light dark:bg-background-dark border-none rounded-xl focus:ring-2 focus:ring-primary text-background-dark dark:text-white transition-all placeholder:text-gray-400" />
+<button type="button" class="toggle-password absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="passwordNueva">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-background-dark dark:text-gray-200">Confirmar contraseña</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">lock</span>
+<input id="passwordConfirma" type="password" placeholder="Repite la contraseña" class="w-full pl-12 pr-12 h-14 bg-background-light dark:bg-background-dark border-none rounded-xl focus:ring-2 focus:ring-primary text-background-dark dark:text-white transition-all placeholder:text-gray-400" />
+<button type="button" class="toggle-password absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" data-target="passwordConfirma">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+</div>
+<button id="btnRestablecer" type="submit" class="w-full h-14 bg-primary hover:bg-opacity-90 text-background-dark font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+<span>Guardar nueva contraseña</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</form>
+</div>
+
+<div id="okCard" class="hidden w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 sm:p-10 text-center">
+<span class="material-symbols-outlined text-5xl text-primary mb-4">check_circle</span>
+<h1 class="text-2xl font-bold text-background-dark dark:text-white mb-2">Contraseña actualizada</h1>
+<p class="text-gray-500 dark:text-gray-400 mb-8">Ya puedes iniciar sesión con tu nueva contraseña.</p>
+<a href="inicio-sesion.html" class="inline-block h-14 px-8 bg-primary hover:bg-opacity-90 text-background-dark font-bold rounded-xl transition-all leading-[3.5rem]">Iniciar sesión</a>
+</div>
+
+<div id="invalidCard" class="hidden w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 sm:p-10 text-center">
+<span class="material-symbols-outlined text-5xl text-red-500 mb-4">error</span>
+<h1 class="text-2xl font-bold text-background-dark dark:text-white mb-2">Enlace inválido o expirado</h1>
+<p class="text-gray-500 dark:text-gray-400 mb-8">Solicita un nuevo enlace de recuperación.</p>
+<a href="recuperar-contrasena.html" class="inline-block h-14 px-8 bg-primary hover:bg-opacity-90 text-background-dark font-bold rounded-xl transition-all leading-[3.5rem]">Solicitar otro enlace</a>
+</div>
+</main>
+
+<footer class="w-full py-8 text-center">
+<p class="text-xs text-gray-400">© 2024 Signly. Todos los derechos reservados.</p>
+</footer>
+
+<script>
+function goHome(){ window.location.href = 'index.html'; }
+
+document.querySelectorAll('.toggle-password').forEach(btn => {
+	btn.addEventListener('click', function(e) {
+		e.preventDefault();
+		const target = document.getElementById(this.dataset.target);
+		if (target) target.type = target.type === 'password' ? 'text' : 'password';
+	});
+});
+
+function ocultarFormulario(){
+	document.getElementById('formCard').classList.add('hidden');
+	document.getElementById('okCard').classList.remove('hidden');
+}
+
+async function restablecer(){
+	const password = document.getElementById('passwordNueva').value;
+	const confirmacion = document.getElementById('passwordConfirma').value;
+	const btn = document.getElementById('btnRestablecer');
+	const params = new URLSearchParams(window.location.search);
+	const token = params.get('token');
+
+	if (!token) {
+		document.getElementById('invalidCard').classList.remove('hidden');
+		document.getElementById('formCard').classList.add('hidden');
+		return;
+	}
+
+	if (password !== confirmacion) {
+		showCustomAlert('Las contraseñas no coinciden', 'warning');
+		return;
+	}
+	if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password)) {
+		showCustomAlert('La contraseña debe tener al menos 8 caracteres, con letras y números', 'warning');
+		return;
+	}
+
+	btn.disabled = true;
+	btn.innerHTML = '<span>Guardando...</span>';
+
+	try {
+		const response = await fetch('/api/auth/reset-password', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ token, password })
+		});
+		const data = await response.json();
+
+		if (!response.ok) {
+			showCustomAlert(data.msg || 'Error al restablecer la contraseña', 'error');
+			if (response.status === 400 && data.msg && data.msg.includes('inválido')) {
+				document.getElementById('invalidCard').classList.remove('hidden');
+				document.getElementById('formCard').classList.add('hidden');
+			}
+			return;
+		}
+
+		// La sesión local (si existía) quedó revocada por el cambio de contraseña
+		clearSession();
+		ocultarFormulario();
+	} catch (e) {
+		console.error(e);
+		showCustomAlert('Error de conexión. Intenta de nuevo.', 'error');
+	} finally {
+		btn.disabled = false;
+		btn.innerHTML = '<span>Guardar nueva contraseña</span><span class="material-symbols-outlined">arrow_forward</span>';
+	}
+}
+</script>
+</body>
+</html>

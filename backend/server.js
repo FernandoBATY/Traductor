@@ -1,10 +1,14 @@
 const express = require('express');
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const httpProxy = require('http-proxy');
 const { spawn } = require('child_process');
+const requestLogger = require('./middleware/requestLogger');
+const { counters } = require('./middleware/requestLogger');
+const healthMonitor = require('./utils/healthMonitor');
+const { info, error: logError } = require('./utils/logger');
 const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://localhost:5000';
 const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://localhost:5001';
 
@@ -14,7 +18,8 @@ const app = express();
 // Sin esto el rate-limit ve a todos los usuarios con la misma IP (la del proxy) y bloquearía globalmente.
 app.set('trust proxy', 1);
 
-// Conectar a la base de datos
+// Conectar a la base de datos (pool + auto-esquema). No bloquea el arranque:
+// si MySQL no responde, la app arranca igual en modo degradado.
 connectDB();
 
 // Cabeceras de seguridad (helmet) con CSP acorde a la app: Tailwind CDN, fuentes de Google,
@@ -62,6 +67,9 @@ app.use(cors({
 // Middleware
 app.use(express.json({ extended: false, limit: '100kb' }));
 
+// Log estructurado de cada petición (duración, estado, IP) + alerta de picos 5xx
+app.use(requestLogger);
+
 // Serve static files from the "frontend/templates" directory
 app.use(express.static(path.join(__dirname, '../frontend/templates')));
 
@@ -90,6 +98,27 @@ app.use('/api/python', require('./routes/python-scripts'));
 // Serve a placeholder favicon to avoid missing file errors
 app.get('/favicon.ico', (req, res) => {
     res.status(204).send(); // Send a "No Content" response
+});
+
+// Healthz para el monitor de Render/uptime (sin lógica, respuesta inmediata)
+app.get('/healthz', (req, res) => {
+    res.send('ok');
+});
+
+// Estadísticas operativas: actividad del proceso + estado de los servicios Flask
+app.get('/api/ops/stats', (req, res) => {
+    res.json({
+        uptimeSec: Math.round(process.uptime()),
+        requests: {
+            total: counters.total,
+            byStatus: counters.byStatus,
+            avgMs: Math.round(counters.avgMs),
+            fivexxLastMinute: counters.fivexxWindow.count,
+            fivexxPeak: counters.fivexxWindow.peak
+        },
+        flask: healthMonitor.status,
+        startedAt: new Date(counters.startedAt).toISOString()
+    });
 });
 
 // Proxy requests to /api/health to the Flask server
@@ -162,6 +191,10 @@ app.get('/:page', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Monitoreo de salud de los servicios Flask (logs de caída/recuperación, cada 30 s)
+healthMonitor.start(30000);
+
 app.listen(PORT, () => {
     console.log(`Server started on port ${PORT}`);
     console.log(`Open http://localhost:${PORT} to view the project.`);

@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="../js/custom-alert.js"></script>
 <script src="../js/mobile-nav.js"></script>
+<script src="../js/auth.js"></script>
 <script>(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();</script>
 <script id="tailwind-config">
         tailwind.config = {
@@ -109,6 +110,10 @@
 <span class="hidden md:inline text-slate-600 dark:text-slate-400 text-sm font-medium">
 Bienvenido, <span id="userName" class="text-primary font-bold"></span>
 </span>
+<a href="cuenta.html" class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-primary/10 text-primary font-semibold text-sm hover:bg-primary/20 transition-colors" title="Mi cuenta">
+<span class="material-symbols-outlined text-lg">account_circle</span>
+<span class="hidden sm:inline">Mi Cuenta</span>
+</a>
 <button onclick="logout()" class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 font-semibold text-sm hover:bg-red-500/20 transition-colors" title="Cerrar sesión">
 <span class="material-symbols-outlined text-lg">logout</span>
 <span class="hidden sm:inline">Cerrar Sesión</span>
@@ -294,11 +299,10 @@ Visualización
     }
 
     function logout() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('userName');
-        checkAuth();
-        showCustomAlert('Sesión cerrada exitosamente', 'success');
+        serverLogout().then(() => {
+            checkAuth();
+            showCustomAlert('Sesión cerrada exitosamente', 'success');
+        });
     }
 
     // Ejecutar verificación al cargar la página
