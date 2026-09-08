@@ -10,6 +10,10 @@ const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://localhost:500
 
 const app = express();
 
+// Detrás del proxy de Render, confiar 1 salto para que req.ip use la IP real del cliente.
+// Sin esto el rate-limit ve a todos los usuarios con la misma IP (la del proxy) y bloquearía globalmente.
+app.set('trust proxy', 1);
+
 // Conectar a la base de datos
 connectDB();
 
