@@ -91,6 +91,9 @@ app.use('/static', express.static(path.join(__dirname, '../frontend/static'), {
 // Ensure the auth route is correctly registered
 app.use('/api/auth', require('./routes/auth'));
 
+// Contacto/soporte (envía correo vía SMTP o fallback a mailto)
+app.use('/api', require('./routes/contact'));
+
 // Python scripts routes (capture, train, recognition).
 // Nota: la ruta heredada "script.js" (ejecución de scripts arbitrarios) ya NO se monta.
 app.use('/api/python', require('./routes/python-scripts'));

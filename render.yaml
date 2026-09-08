@@ -48,3 +48,11 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      # RESEND (alternativa al SMTP). Con la API key se envía por Resend (dominio verificado en RESEND_FROM).
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+      # Destinatario del formulario de contacto/soporte (fallback: SMTP_USER)
+      - key: SUPPORT_EMAIL
+        sync: false

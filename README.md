@@ -105,6 +105,9 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 | `SMTP_SECURE` | `false` | Usar TLS (`true` para 465) |
 | `SMTP_USER` / `SMTP_PASS` | *(vacío)* | Credenciales SMTP (opcionales si el relay no requiere auth) |
 | `SMTP_FROM` | *(vacío)* | Remitente de los correos (default: `SMTP_USER`) |
+| `RESEND_API_KEY` | *(vacío)* | API key de **Resend** (alternativa al SMTP, API HTTP; si está definida tiene prioridad). Plan free: 100 correos/día |
+| `RESEND_FROM` | *(vacío)* | Remitente en Resend, debe usar un dominio verificado (ej: `"Traductor <envios@tudominio.com>"`) |
+| `SUPPORT_EMAIL` | *(vacío)* | Destinatario de los mensajes del formulario "Contactar" (default: `SMTP_USER` o `soporte@traductor.local`) |
 
 ## Funcionalidades
 
@@ -113,6 +116,8 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
   (borra perfil, imágenes capturadas y modelos del usuario).
 - **Recuperación de contraseña** por correo (token de un solo uso, 30 min): `recuperar-contrasena.html`
   solicita el enlace y `restablecer-contrasena.html` lo canjea. Requiere SMTP configurado para entregar el correo.
+- **Contacto / soporte** desde el botón "Contactar": envía un correo de ayuda (Resend o SMTP)
+  por `POST /api/contact`; si no hay ninguno configurado, abre el cliente de correo del usuario (mailto).
 - **Sesiones revocables y renovables**: cada JWT incluye una versión de token; cerrar sesión o cambiar
   contraseña revoca todas las sesiones, y `/api/auth/refresh` renueva el token antes de expirar sin pedir
   credenciales (el front lo hace solo cada 5 minutos).

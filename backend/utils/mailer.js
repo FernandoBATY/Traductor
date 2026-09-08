@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 
+const RESEND_API_URL = 'https://api.resend.com/emails';
+
 let transporter = null;
+let resendKey = process.env.RESEND_API_KEY || null;
 
 if (process.env.SMTP_HOST) {
     try {
@@ -18,15 +21,42 @@ if (process.env.SMTP_HOST) {
     }
 }
 
+// Se considera configurado si hay API key de Resend o transporte SMTP
 function mailerConfigured() {
-    return !!transporter;
+    return !!(resendKey || transporter);
+}
+
+function defaultFrom() {
+    return process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || process.env.RESEND_API_KEY_FROM || undefined;
+}
+
+async function sendViaResend({ to, from, subject, html, replyTo }) {
+    const res = await fetch(RESEND_API_URL, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${resendKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) })
+    });
+    if (!res.ok) {
+        const detail = await res.text();
+        throw new Error(`Resend ${res.status}: ${detail}`);
+    }
+    return true;
+}
+
+async function sendMail({ to, from, subject, html, replyTo }) {
+    if (resendKey) {
+        return sendViaResend({ to, from: from && !replyTo ? from : defaultFrom(), subject, html, replyTo: replyTo || from });
+    }
+    if (!transporter) return false;
+    await transporter.sendMail({ from: from || defaultFrom(), to, subject, html, ...(replyTo ? { replyTo } : {}) });
+    return true;
 }
 
 async function sendPasswordReset(email, resetLink) {
-    if (!transporter) return false;
-    const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-    await transporter.sendMail({
-        from,
+    return sendMail({
         to: email,
         subject: 'Restablecer contraseña - Traductor de Lengua de Señas',
         html: `<p>Recibimos una solicitud para restablecer tu contraseña.</p>
@@ -34,7 +64,6 @@ async function sendPasswordReset(email, resetLink) {
                <p><a href="${resetLink}">${resetLink}</a></p>
                <p>Si no la solicitaste, ignora este correo.</p>`
     });
-    return true;
 }
 
-module.exports = { mailerConfigured, sendPasswordReset };
+module.exports = { mailerConfigured, sendMail, sendPasswordReset };

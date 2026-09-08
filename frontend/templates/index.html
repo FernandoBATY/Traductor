@@ -70,7 +70,7 @@
 <div class="p-6">
 <div class="bg-slate-50 dark:bg-white/5 rounded-2xl p-4 border border-slate-100 dark:border-white/5">
 <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3">SOPORTE TÉCNICO</p>
-<button class="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors">
+<button onclick="openContactModal()" class="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors">
 <span class="material-symbols-outlined text-sm">chat</span>
                     Contactar
                 </button>
@@ -219,12 +219,55 @@ Visualización
 <div class="flex flex-col md:flex-row justify-between items-center gap-6">
 <div class="flex items-center gap-6"></div>
 <p class="text-slate-400 dark:text-slate-600 text-xs text-center md:text-right">
-                        © 2026 Trabajo de universidad UMB.
+                        © 2026 FernandoBATY ·
+                        <a href="https://github.com/FernandoBATY" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">GitHub</a>
                     </p>
 </div>
 </div>
 </div>
 </main>
+</div>
+
+<!-- Modal de contacto / ayuda por correo -->
+<div id="contactModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+<div class="w-full max-w-lg bg-white dark:bg-[#152a1c] rounded-2xl shadow-2xl p-6 sm:p-8">
+<div class="flex items-start justify-between mb-6">
+<div>
+<h3 class="text-xl font-bold text-slate-900 dark:text-white">Contactar soporte</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Cuéntanos con qué necesitas ayuda y te responderemos por correo.</p>
+</div>
+<button onclick="closeContactModal()" class="flex size-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors" aria-label="Cerrar">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<form class="space-y-4" onsubmit="event.preventDefault(); enviarContacto();">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-200">Tu nombre</label>
+<input id="contactNombre" type="text" maxlength="80" class="w-full h-11 px-4 bg-slate-50 dark:bg-background-dark border-none rounded-xl focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" />
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-200">Correo para responderte</label>
+<input id="contactEmail" type="email" required class="w-full h-11 px-4 bg-slate-50 dark:bg-background-dark border-none rounded-xl focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" placeholder="ejemplo@correo.com" />
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-200">Asunto</label>
+<input id="contactAsunto" type="text" maxlength="120" required placeholder="¿En qué te podemos ayudar?" class="w-full h-11 px-4 bg-slate-50 dark:bg-background-dark border-none rounded-xl focus:ring-2 focus:ring-primary text-slate-900 dark:text-white" />
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-200">Mensaje</label>
+<textarea id="contactMensaje" rows="4" required maxlength="2000" class="w-full px-4 py-3 bg-slate-50 dark:bg-background-dark border-none rounded-xl focus:ring-2 focus:ring-primary text-slate-900 dark:text-white resize-none" placeholder="Describe el problema o tu consulta..."></textarea>
+</div>
+<div class="flex justify-end gap-3 pt-2">
+<button type="button" onclick="closeContactModal()" class="px-5 h-11 rounded-xl bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-200 transition-colors">
+Cancelar
+</button>
+<button id="btnContacto" type="submit" class="flex items-center gap-2 px-6 h-11 rounded-xl bg-primary hover:bg-primary/90 text-slate-900 font-bold text-sm transition-all">
+<span class="material-symbols-outlined text-base">send</span>
+Enviar
+</button>
+</div>
+</form>
+</div>
 </div>
 
 <script>
@@ -303,6 +346,67 @@ Visualización
             checkAuth();
             showCustomAlert('Sesión cerrada exitosamente', 'success');
         });
+    }
+
+    // Modal de contacto por correo
+    function openContactModal() {
+        const nombre = localStorage.getItem('userName');
+        if (nombre) document.getElementById('contactNombre').value = nombre;
+        document.getElementById('contactModal').classList.remove('hidden');
+        document.getElementById('contactModal').classList.add('flex');
+    }
+
+    function closeContactModal() {
+        document.getElementById('contactModal').classList.add('hidden');
+        document.getElementById('contactModal').classList.remove('flex');
+    }
+
+    async function enviarContacto() {
+        const payload = {
+            name: document.getElementById('contactNombre').value.trim(),
+            email: document.getElementById('contactEmail').value.trim(),
+            subject: document.getElementById('contactAsunto').value.trim(),
+            message: document.getElementById('contactMensaje').value.trim()
+        };
+
+        if (!payload.name) { showCustomAlert('Escribe tu nombre', 'warning'); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) { showCustomAlert('Ingresa un correo válido', 'warning'); return; }
+        if (payload.subject.length < 3) { showCustomAlert('Escribe un asunto más detallado', 'warning'); return; }
+        if (payload.message.length < 5) { showCustomAlert('Escribe un mensaje', 'warning'); return; }
+
+        const btn = document.getElementById('btnContacto');
+        btn.disabled = true;
+        btn.innerHTML = '<span>Enviando...</span>';
+
+        try {
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                showCustomAlert(data.msg || 'No se pudo enviar el mensaje', 'error');
+                return;
+            }
+
+            if (data.mailto) {
+                // Sin SMTP: se abre el cliente de correo del usuario con el mensaje prellenado
+                closeContactModal();
+                showCustomAlert(data.msg, 'success');
+                window.location.href = data.mailto;
+            } else {
+                closeContactModal();
+                document.querySelector('#contactModal form').reset();
+                showCustomAlert(data.msg, 'success');
+            }
+        } catch (e) {
+            showCustomAlert('Error de conexión. Inténtalo de nuevo.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined text-base">send</span>Enviar';
+        }
     }
 
     // Ejecutar verificación al cargar la página
