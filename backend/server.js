@@ -108,6 +108,10 @@ app.get('/', (req, res) => {
 // Dynamic route to serve HTML pages
 app.get('/:page', (req, res) => {
     const page = req.params.page;
+    // Solo nombres de archivo HTML sencillos: evita path traversal (.., %2F, barras, etc.)
+    if (!/^[A-Za-z0-9_-]+\.html$/.test(page)) {
+        return res.status(400).send('Invalid page.');
+    }
     res.sendFile(path.join(__dirname, '../frontend/templates', page));
 });
 
