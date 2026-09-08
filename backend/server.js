@@ -20,9 +20,11 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
+            scriptSrcAttr: ["'self'", "'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            styleSrcAttr: ["'self'", "'unsafe-inline'"],
             fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "data:"],
-            imgSrc: ["'self'", "data:", "blob:", "https://files.catbox.moe"],
+            imgSrc: ["'self'", "data:", "blob:", "https://files.catbox.moe", "https://lh3.googleusercontent.com"],
             mediaSrc: ["'self'", "blob:"],
             connectSrc: ["'self'", "https://cdn.jsdelivr.net", "https://storage.googleapis.com"],
             workerSrc: ["'self'", "blob:"],
