@@ -31,7 +31,7 @@ app.use(helmet({
             imgSrc: ["'self'", "data:", "blob:", "https://files.catbox.moe", "https://lh3.googleusercontent.com"],
             mediaSrc: ["'self'", "blob:"],
             connectSrc: ["'self'", "https://cdn.jsdelivr.net", "https://storage.googleapis.com"],
-            workerSrc: ["'self'", "blob:"],
+            workerSrc: ["'self'", "blob:", "https://cdn.jsdelivr.net", "https://storage.googleapis.com"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
