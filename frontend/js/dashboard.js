@@ -17,15 +17,3 @@ function logout() {
         window.location.href = 'index.html';
     }, 1500);
 }
-
-function runPythonScript(script) {
-    const userId = localStorage.getItem('userId'); // Obtener el ID del usuario
-    if (!userId) {
-        showCustomAlert('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.', 'warning');
-        return;
-    }
-    fetch(`/api/run-script?script=${script}&userId=${userId}`)
-        .then(response => response.json())
-        .then(data => showCustomAlert(data.message, 'info'))
-        .catch(error => console.error('Error:', error));
-}

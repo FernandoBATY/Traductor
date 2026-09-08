@@ -4,8 +4,6 @@ const cors = require('cors');
 const path = require('path');
 const httpProxy = require('http-proxy');
 const { spawn } = require('child_process');
-const axios = require('axios');
-const util = require('util');
 const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://localhost:5000';
 const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://localhost:5001';
 
@@ -48,20 +46,9 @@ app.get('/favicon.ico', (req, res) => {
     res.status(204).send(); // Send a "No Content" response
 });
 
-// Proxy requests to /api/video_feed and /api/health to the Flask server
+// Proxy requests to /api/health to the Flask server
 const proxy = httpProxy.createProxyServer();
 
-// Proxy requests to /api/video_feed to the Flask server
-app.get('/api/video_feed', async (req, res) => {
-    try {
-        proxy.web(req, res, { target: `${FLASK_REC_URL}/video_feed` }); // Ensure correct target
-    } catch (error) {
-        console.error('Error proxying video feed:', error.message);
-        res.status(500).send('Error proxying video feed.');
-    }
-});
-
-// Proxy requests to /api/health to the Flask server
 app.get('/api/health', async (req, res) => {
     try {
         proxy.web(req, res, { target: `${FLASK_REC_URL}/health` }); // Ensure correct target
@@ -104,9 +91,7 @@ if (pythonServicesExternos) {
 }
 
 async function gracefulShutdown() {
-    console.log('Shutting down: closing cameras and stopping Python services...');
-    try { await axios.post(`${FLASK_CAPTURE_URL}/camera/close`); } catch {}
-    try { await axios.post(`${FLASK_REC_URL}/api/camera/close`); } catch {}
+    console.log('Shutting down: stopping Python services...');
     try { capturaProc && capturaProc.kill(); } catch {}
     try { reconocimientoProc && reconocimientoProc.kill(); } catch {}
 }

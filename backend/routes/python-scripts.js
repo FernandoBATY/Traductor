@@ -49,87 +49,6 @@ router.post('/stop-service', (req, res) => {
 
 // ============ Captura de Imágenes Routes ============
 
-// Proxy video feed from captura_imagenes.py (port 5001)
-router.get('/capture-video-feed', async (req, res) => {
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(400).send('userId query parameter is required.');
-    }
-
-    try {
-        const flaskUrl = `${FLASK_CAPTURE_URL}/video_feed`;
-        const response = await axios.get(flaskUrl, {
-            responseType: 'stream',
-            timeout: 30000
-        });
-
-        // Copy headers from Flask response
-        res.setHeader('Content-Type', response.headers['content-type']);
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-
-        // Pipe the stream to the client
-        response.data.pipe(res);
-
-        response.data.on('error', (err) => {
-            console.error('Error streaming from Flask:', err.message);
-            res.status(500).end('Stream error');
-        });
-
-        res.on('error', (err) => {
-            console.error('Error sending stream to client:', err.message);
-        });
-    } catch (error) {
-        console.error('Error proxying capture video feed:', error.message);
-        res.status(503).send('Video feed service unavailable.');
-    }
-});
-
-// Camera control for captura service
-router.post('/capture-camera/open', async (req, res) => {
-    try {
-        const r = await axios.post(`${FLASK_CAPTURE_URL}/camera/open`);
-        res.json({ success: true, message: r.data });
-    } catch (e) {
-        console.error('Error opening captura camera:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to open captura camera.' });
-    }
-});
-
-router.post('/capture-camera/close', async (req, res) => {
-    try {
-        const r = await axios.post(`${FLASK_CAPTURE_URL}/camera/close`);
-        res.json({ success: true, message: r.data });
-    } catch (e) {
-        console.error('Error closing captura camera:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to close captura camera.' });
-    }
-});
-
-// Get available cameras for capture service
-router.get('/capture-cameras', async (req, res) => {
-    try {
-        const r = await axios.get(`${FLASK_CAPTURE_URL}/api/cameras`);
-        res.json(r.data);
-    } catch (e) {
-        console.error('Error getting capture cameras:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to get capture cameras.' });
-    }
-});
-
-// Set camera for capture service
-router.post('/capture-camera/set/:index', async (req, res) => {
-    try {
-        const index = req.params.index;
-        const r = await axios.post(`${FLASK_CAPTURE_URL}/api/camera/set/${index}`);
-        res.json(r.data);
-    } catch (e) {
-        console.error('Error setting capture camera:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to set capture camera.' });
-    }
-});
-
 // Count images captured for a given userId
 router.get('/count-images', (req, res) => {
     const userId = req.userId;
@@ -204,10 +123,7 @@ router.post('/capture-image', (req, res) => {
 // Health check for captura service (port 5001)
 async function checkCapturaHealth() {
     try {
-        await axios.get(`${FLASK_CAPTURE_URL}/video_feed`, {
-            timeout: 2000,
-            responseType: 'stream'
-        });
+        await axios.get(`${FLASK_CAPTURE_URL}/health`, { timeout: 2000 });
         return true;
     } catch (e) {
         return false;
@@ -286,7 +202,7 @@ router.get('/start-capture', async (req, res) => {
                         console.error('Timeout waiting for captura_imagenes.py to be ready');
                         res.status(500).json({ 
                             success: false, 
-                            message: 'Failed to start captura_imagenes.py. Check Python dependencies and camera access.',
+                            message: 'Failed to start captura_imagenes.py. Check Python dependencies.',
                             hint: 'Ensure Python packages are installed: pip install -r requirements.txt'
                         });
                     }
@@ -335,50 +251,10 @@ router.post('/train-model', (req, res) => {
 
 // ============ Reconocimiento/Visualización Routes ============
 
-// Proxy video feed from reconocimiento.py (port 5000)
-router.get('/recognize-video-feed', async (req, res) => {
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(400).send('userId query parameter is required.');
-    }
-
-    try {
-        const flaskUrl = `${FLASK_REC_URL}/api/video_feed`;
-        const response = await axios.get(flaskUrl, {
-            responseType: 'stream',
-            timeout: 30000
-        });
-
-        // Copy headers from Flask response
-        res.setHeader('Content-Type', response.headers['content-type']);
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-
-        // Pipe the stream to the client
-        response.data.pipe(res);
-
-        response.data.on('error', (err) => {
-            console.error('Error streaming from Flask:', err.message);
-            res.status(500).end('Stream error');
-        });
-
-        res.on('error', (err) => {
-            console.error('Error sending stream to client:', err.message);
-        });
-    } catch (error) {
-        console.error('Error proxying recognition video feed:', error.message);
-        res.status(503).send('Video feed service unavailable.');
-    }
-});
-
 // Health check for reconocimiento service (port 5000)
 async function checkReconocimientoHealth() {
     try {
-        await axios.get(`${FLASK_REC_URL}/api/video_feed`, {
-            timeout: 2000,
-            responseType: 'stream'
-        });
+        await axios.get(`${FLASK_REC_URL}/api/health`, { timeout: 2000 });
         return true;
     } catch (e) {
         return false;
@@ -458,7 +334,7 @@ router.get('/start-recognition', async (req, res) => {
                         res.status(500).json({ 
                             success: false, 
                             message: 'Failed to start reconocimiento.py. Check model files and dependencies.',
-                            hint: 'Ensure model files exist in scrips/modelos/1/ and Python dependencies are installed.'
+                            hint: 'Ensure model files exist in backend/modelos/<userId>/ and Python dependencies are installed.'
                         });
                     }
                 }
@@ -515,79 +391,6 @@ router.post('/predecir', async (req, res) => {
     } catch (e) {
         console.error('Error predicting:', e.message);
         res.status(503).json({ success: false, message: 'Servicio de reconocimiento no disponible.' });
-    }
-});
-
-// Camera control for reconocimiento service
-router.post('/recognition-camera/open', async (req, res) => {
-    try {
-        const userId = req.userId;
-        const model = (req.query.model || req.body.model || 'user').toString().toLowerCase();
-        if (!userId) {
-            return res.status(400).json({ success: false, message: 'userId parameter required' });
-        }
-        
-        // 'base' => modelo compartido; 'user' => modelo del usuario (con respaldo al base)
-        const modelUser = model === 'base' ? 'base' : userId;
-        
-        // Try to load the model for this user (does not block the camera if missing)
-        let modelLoaded = true;
-        try {
-            await axios.post(`${FLASK_REC_URL}/api/load-model?userId=${modelUser}`);
-            console.log(`Model loaded for user ${modelUser} (seleccion: ${model})`);
-        } catch (loadError) {
-            modelLoaded = false;
-            console.warn(`Model not loaded for user ${modelUser}:`, loadError.response?.data || loadError.message);
-        }
-        
-        // Abrir cámara del servidor si existe; en la nube normalmente no hay y no debe bloquear
-        let camMsg = 'OK';
-        try {
-            camMsg = (await axios.post(`${FLASK_REC_URL}/api/camera/open`)).data;
-        } catch (cameraError) {
-            console.warn('Camera no disponible en el servidor:', cameraError.message);
-        }
-        res.json({ 
-            success: true, 
-            message: modelLoaded ? camMsg : 'Cámara abierta, pero aún no hay modelo entrenado para este usuario.',
-            modelLoaded: modelLoaded
-        });
-    } catch (e) {
-        console.error('Error opening recognition camera:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to open recognition camera.' });
-    }
-});
-
-router.post('/recognition-camera/close', async (req, res) => {
-    try {
-        const r = await axios.post(`${FLASK_REC_URL}/api/camera/close`);
-        res.json({ success: true, message: r.data });
-    } catch (e) {
-        console.error('Error closing recognition camera:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to close recognition camera.' });
-    }
-});
-
-// Get available cameras for recognition service
-router.get('/recognition-cameras', async (req, res) => {
-    try {
-        const r = await axios.get(`${FLASK_REC_URL}/api/cameras`);
-        res.json(r.data);
-    } catch (e) {
-        console.error('Error getting recognition cameras:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to get recognition cameras.' });
-    }
-});
-
-// Set camera for recognition service
-router.post('/recognition-camera/set/:index', async (req, res) => {
-    try {
-        const index = req.params.index;
-        const r = await axios.post(`${FLASK_REC_URL}/api/camera/set/${index}`);
-        res.json(r.data);
-    } catch (e) {
-        console.error('Error setting recognition camera:', e.message);
-        res.status(500).json({ success: false, message: 'Failed to set recognition camera.' });
     }
 });
 

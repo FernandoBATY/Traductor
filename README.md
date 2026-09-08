@@ -128,11 +128,11 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 │   ├── config/db.js            # Conexión MySQL (mysql2)
 │   ├── models/User.js          # Consultas de usuarios
 │   ├── middleware/             # auth.js (JWT), rateLimit.js
-│   ├── routes/                 # auth.js, python-scripts.js (script.js quedó sin montar)
+│   ├── routes/                 # auth.js (auth), python-scripts.js (orquestación IA)
 │   ├── scripts/postinstall.js  # Instala dependencias de Python tras npm install
 │   ├── python/                 # Scripts ML
-│   │   ├── reconocimiento.py   # Flask ($FLASK_REC_PORT) — predicción de gestos
-│   │   ├── captura_imagenes.py # Flask ($FLASK_CAPTURE_PORT) — captura para entrenamiento
+│   │   ├── reconocimiento.py   # Flask ($FLASK_REC_PORT) — API pura de predicción
+│   │   ├── captura_imagenes.py # Flask ($FLASK_CAPTURE_PORT) — API de guardado de imágenes
 │   │   ├── entrenamiento.py    # Entrenamiento de modelo por usuario
 │   │   ├── entrenar_base.py    # Entrenamiento del modelo base (A–Z) con aumento de datos
 │   │   ├── evaluar_base.py     # Evaluación del modelo base
@@ -170,9 +170,12 @@ Ya resuelto:
 6. **Seguridad aplicada** — todas las rutas de `/api/python` exigen un **token JWT**
    (`Authorization: Bearer <token>`); el `userId` se toma del token, nunca del query/body
    (no se puede manipular). `login`/`register` tienen **rate-limit** (10 y 5 por minuto por IP).
-7. **Cámara en espejo** — los feeds de reconocimiento y captura se muestran en modo espejo
-   (más cómodo al hacer señas): `cv2.flip(frame,1)` en `reconocimiento.py` y `captura_imagenes.py`,
-   y `-scale-x-100` en los `<video>` del navegador.
+7. **Cámara en espejo** — el video del navegador se muestra en modo espejo (`-scale-x-100`),
+   más cómodo al hacer señas. La predicción usa los landmarks crudos (sin espejo), igual que el
+   entrenamiento.
+8. **Flask son solo API** — se eliminaron los flujos legado de cámara del servidor
+   (`video_feed`, control de cámara, páginas Flask) y la ruta RCE `script.js`. La cámara vive
+   exclusivamente en el navegador (`getUserMedia`) y los Flask solo reciben imágenes/landmarks.
 
 Pendientes / limitaciones a tener en cuenta:
 

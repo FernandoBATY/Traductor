@@ -38,11 +38,6 @@ def _normalizar_puntos(puntos):
     return gesto
 
 
-def vector_crudo(landmarks):
-    """Devuelve los 63 valores crudos [x,y,z] de los 21 landmarks."""
-    return [c for p in landmarks.landmark for c in _coord(p)]
-
-
 def vector_normalizado(landmarks):
     """Características invariantes a posición y escala: 63 valores."""
     return _normalizar_puntos(landmarks.landmark)
