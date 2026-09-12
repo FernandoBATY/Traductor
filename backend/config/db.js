@@ -29,7 +29,23 @@ const pool = mysql.createPool({
 });
 
 // Devuelve una conexión del pool (liberar SIEMPRE con conn.release()).
-const db = async () => pool.getConnection();
+// De paso actualiza `estado`: así el indicador refleja si la base responde AHORA y no
+// solo cómo fue el intento del arranque, que se quedaba obsoleto en cuanto MySQL se
+// caía o volvía sin reiniciar el servicio.
+const db = async () => {
+    try {
+        const conn = await pool.getConnection();
+        estado.conectada = true;
+        estado.ultimoError = null;
+        estado.ultimoIntento = new Date().toISOString();
+        return conn;
+    } catch (err) {
+        estado.conectada = false;
+        estado.ultimoError = err.message;
+        estado.ultimoIntento = new Date().toISOString();
+        throw err;
+    }
+};
 
 // Migraciones idempotentes: se ejecutan al arrancar, sin pasos manuales.
 async function ensureSchema(conn) {
@@ -105,15 +121,21 @@ if (!process.env.DB_PASS) {
 // Si MySQL no responde al arrancar, se reintenta en segundo plano. Sin esto el
 // esquema solo se creaba en el arranque y, si la base tardaba en estar lista o se
 // arreglaba después, hacía falta reiniciar el servicio a mano para que se aplicara.
-async function connectWithRetry({ intentos = 10, esperaMs = 30000 } = {}) {
-    for (let i = 0; i < intentos; i++) {
+async function connectWithRetry({ esperaMs = 30000, esperaMaxMs = 300000 } = {}) {
+    let espera = esperaMs;
+    let intento = 0;
+    // Sin límite de intentos, pero espaciándolos: si la base se recupera horas después
+    // (como pasó al apagarse el servicio de Aiven), el esquema se crea solo en cuanto
+    // vuelva, sin reiniciar el servicio a mano.
+    for (;;) {
         if (await connectDB()) return true;
-        if (i < intentos - 1) {
-            await new Promise((r) => setTimeout(r, esperaMs).unref?.());
+        intento += 1;
+        if (intento === 5) {
+            console.error(`[db] MySQL sigue sin responder; se reintentará cada ${Math.round(esperaMaxMs / 60000)} min.`);
         }
+        await new Promise((r) => { const t = setTimeout(r, espera); if (t.unref) t.unref(); });
+        espera = Math.min(espera * 2, esperaMaxMs);
     }
-    console.error('[db] MySQL sigue sin responder tras varios intentos.');
-    return false;
 }
 
 db.ensureSchema = ensureSchema;

@@ -106,9 +106,17 @@ app.get('/favicon.ico', (req, res) => {
     res.status(204).send(); // Send a "No Content" response
 });
 
-// Healthz para el monitor de Render/uptime (sin lógica, respuesta inmediata)
+// Healthz para el monitor de Render/uptime.
+//
+// Devuelve 503 si MySQL no responde. Antes contestaba 'ok' pase lo que pase, así que
+// un monitor externo veía el servicio "sano" mientras la base estaba caída y la app
+// no podía autenticar a nadie: la caída se descubrió porque un usuario se quejó.
+// Con esto, cualquier monitor de uptime avisa solo. No revela ningún detalle interno.
 app.get('/healthz', (req, res) => {
-    res.send('ok');
+    if (!dbEstado.conectada) {
+        return res.status(503).type('text').send('degraded');
+    }
+    res.type('text').send('ok');
 });
 
 // Estadísticas operativas: actividad del proceso, servicios Flask y estado de MySQL.
