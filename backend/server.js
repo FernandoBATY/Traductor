@@ -1,7 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('./config/db');
-const { connectDB } = db;
 const dbEstado = db.estado;
 const cors = require('cors');
 const helmet = require('helmet');
@@ -21,9 +20,10 @@ const app = express();
 // Sin esto el rate-limit ve a todos los usuarios con la misma IP (la del proxy) y bloquearía globalmente.
 app.set('trust proxy', 1);
 
-// Conectar a la base de datos (pool + auto-esquema). No bloquea el arranque:
-// si MySQL no responde, la app arranca igual en modo degradado.
-connectDB();
+// Conectar a la base de datos (pool + auto-esquema). No bloquea el arranque: si
+// MySQL no responde, la app arranca igual en modo degradado y se sigue reintentando
+// en segundo plano, de modo que el esquema se cree solo cuando la base vuelva.
+db.connectWithRetry();
 
 // Cabeceras de seguridad (helmet) con CSP acorde a la app: Tailwind CDN, fuentes de Google,
 // MediaPipe (jsdelivr + storage.googleapis) e imágenes del diccionario (catbox.moe).

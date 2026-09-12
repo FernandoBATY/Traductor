@@ -33,6 +33,26 @@ const db = async () => pool.getConnection();
 
 // Migraciones idempotentes: se ejecutan al arrancar, sin pasos manuales.
 async function ensureSchema(conn) {
+    // `users` se crea aquí y no solo en database_setup.sql. Antes, con una base de
+    // datos recién creada, esta función buscaba la columna token_version, no la
+    // encontraba, lanzaba un ALTER TABLE sobre una tabla inexistente y reventaba
+    // entera: `password_resets` tampoco llegaba a crearse y el login fallaba con un
+    // 500 hasta que alguien ejecutaba el .sql a mano.
+    await conn.execute(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario VARCHAR(50) NOT NULL UNIQUE,
+            email VARCHAR(100) NOT NULL UNIQUE,
+            contraseña VARCHAR(255) NOT NULL,
+            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            activo BOOLEAN DEFAULT TRUE,
+            token_version INT NOT NULL DEFAULT 0,
+            INDEX idx_email (email),
+            INDEX idx_usuario (usuario)
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+
+    // Bases anteriores: la tabla ya existe pero sin la columna.
     const [[row]] = await conn.execute(
         `SELECT COUNT(*) AS c FROM information_schema.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'token_version'`
@@ -82,8 +102,23 @@ if (!process.env.DB_PASS) {
     console.warn('[db] DB_PASS no está definida: la conexión a MySQL fallará.');
 }
 
+// Si MySQL no responde al arrancar, se reintenta en segundo plano. Sin esto el
+// esquema solo se creaba en el arranque y, si la base tardaba en estar lista o se
+// arreglaba después, hacía falta reiniciar el servicio a mano para que se aplicara.
+async function connectWithRetry({ intentos = 10, esperaMs = 30000 } = {}) {
+    for (let i = 0; i < intentos; i++) {
+        if (await connectDB()) return true;
+        if (i < intentos - 1) {
+            await new Promise((r) => setTimeout(r, esperaMs).unref?.());
+        }
+    }
+    console.error('[db] MySQL sigue sin responder tras varios intentos.');
+    return false;
+}
+
 db.ensureSchema = ensureSchema;
 db.connectDB = connectDB;
+db.connectWithRetry = connectWithRetry;
 db.estado = estado;
 
 module.exports = db;
