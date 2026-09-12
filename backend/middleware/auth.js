@@ -28,12 +28,13 @@ module.exports = async function auth(req, res, next) {
         req.ver = payload.ver || 0;
         return next();
     } catch (err) {
-        // Degradado: si la BD no está disponible no se puede verificar la versión,
-        // se deja pasar con advertencia para no tumbar la API entera.
+        // Fallar CERRADO. Antes se dejaba pasar la petición cuando la BD no respondía,
+        // y eso desactivaba la revocación de sesiones justo cuando menos se puede
+        // comprobar: un token de una cuenta borrada, de una sesión cerrada o de una
+        // contraseña ya cambiada seguía siendo válido mientras MySQL estuviera caído.
         console.error('[auth] BD no disponible al verificar token:', err.message);
-        req.user = payload.user;
-        req.userId = payload.user.id;
-        req.ver = payload.ver || 0;
-        return next();
+        return res.status(503).json({
+            msg: 'El servicio no está disponible temporalmente. Inténtalo de nuevo en unos minutos.'
+        });
     }
 };

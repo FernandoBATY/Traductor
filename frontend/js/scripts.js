@@ -114,7 +114,8 @@ function validatePassword(password) {
 
 // Función para visualizar la contraseña
 function togglePasswordVisibility(fieldId) {
-    const passwordField = document.getElementById(fieldId);
+    const passwordField = fieldId && document.getElementById(fieldId);
+    if (!passwordField) return;
     if (passwordField.type === "password") {
         passwordField.type = "text";
     } else {
@@ -125,7 +126,9 @@ function togglePasswordVisibility(fieldId) {
 // Evento para toggle password en los campos de contraseña
 document.querySelectorAll('.toggle-password').forEach(button => {
     button.addEventListener('click', (e) => {
-        const targetId = e.target.getAttribute('data-target');
+        // currentTarget, no target: al pulsar sobre el icono de dentro del botón,
+        // e.target era el <span> (sin data-target) y esto reventaba con un TypeError.
+        const targetId = e.currentTarget.getAttribute('data-target');
         togglePasswordVisibility(targetId);
     });
 });

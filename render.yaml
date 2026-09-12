@@ -29,6 +29,11 @@ services:
         generateValue: true
       - key: JWT_EXPIRES
         value: 24h
+      # Token para /api/ops/stats (metricas operativas). Sin el, el endpoint
+      # responde 404 en produccion. No usa JWT a proposito: hace falta justamente
+      # cuando MySQL esta caido y no se puede validar ningun token.
+      - key: OPS_TOKEN
+        generateValue: true
       # Entorno y CORS
       - key: NODE_ENV
         value: production

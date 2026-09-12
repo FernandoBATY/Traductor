@@ -1,5 +1,8 @@
 const express = require('express');
-const { connectDB } = require('./config/db');
+const crypto = require('crypto');
+const db = require('./config/db');
+const { connectDB } = db;
+const dbEstado = db.estado;
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
@@ -108,8 +111,25 @@ app.get('/healthz', (req, res) => {
     res.send('ok');
 });
 
-// Estadísticas operativas: actividad del proceso + estado de los servicios Flask
+// Estadísticas operativas: actividad del proceso, servicios Flask y estado de MySQL.
+//
+// Iba SIN autenticación y cualquiera podía leer el tráfico y el estado interno del
+// servicio. Ahora exige OPS_TOKEN. No usa JWT a propósito: hace falta justamente
+// cuando la base de datos está caída y no se puede validar ningún token.
+const OPS_TOKEN = process.env.OPS_TOKEN;
+
+function opsAutorizado(req) {
+    if (!OPS_TOKEN) return process.env.NODE_ENV !== 'production';
+    const enviado = req.get('X-Ops-Token') || req.query.token || '';
+    const a = Buffer.from(String(enviado));
+    const b = Buffer.from(OPS_TOKEN);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 app.get('/api/ops/stats', (req, res) => {
+    if (!opsAutorizado(req)) {
+        return res.status(404).json({ msg: 'Recurso no encontrado' });
+    }
     res.json({
         uptimeSec: Math.round(process.uptime()),
         requests: {
@@ -120,6 +140,11 @@ app.get('/api/ops/stats', (req, res) => {
             fivexxPeak: counters.fivexxWindow.peak
         },
         flask: healthMonitor.status,
+        db: {
+            conectada: dbEstado.conectada,
+            ultimoError: dbEstado.ultimoError,
+            ultimoIntento: dbEstado.ultimoIntento
+        },
         startedAt: new Date(counters.startedAt).toISOString()
     });
 });

@@ -1,9 +1,9 @@
 const { execSync } = require('child_process');
 
-function tryExec(cmd, description) {
+function tryExec(cmd, description, extraEnv) {
   try {
     console.log(`\n> ${description}: ${cmd}`);
-    execSync(cmd, { stdio: 'inherit' });
+    execSync(cmd, { stdio: 'inherit', env: { ...process.env, ...(extraEnv || {}) } });
     return true;
   } catch (e) {
     console.warn(`Failed: ${description}`);
@@ -24,19 +24,22 @@ if (!tryExec('py -m pip install -r requirements.txt', 'Install via py')) {
 }
 
 console.log('\nAttempting MySQL initialization using base.sql (optional)...');
-// Use env vars if provided, fallback to defaults in db.js
 const host = process.env.DB_HOST || 'localhost';
 const user = process.env.DB_USER || 'root';
-const pass = process.env.DB_PASS || '21617';
+// Sin valor por defecto: aquí había una contraseña real escrita en el repositorio.
+const pass = process.env.DB_PASS;
 
-// On Windows, MySQL might be available as `mysql` in PATH
-// Import base.sql if mysql CLI exists
-try {
-  execSync('mysql --version', { stdio: 'ignore' });
-  const importCmd = `mysql -h ${host} -u ${user} -p${pass} < base.sql`;
-  tryExec(importCmd, 'Import base.sql');
-} catch {
-  console.log('MySQL CLI not found in PATH; skipping DB init.');
+if (!pass) {
+  console.log('DB_PASS no definida; se omite la inicialización de la base de datos.');
+} else {
+  try {
+    execSync('mysql --version', { stdio: 'ignore' });
+    // La contraseña viaja por el entorno (MYSQL_PWD) y no en la línea de comandos,
+    // donde cualquier usuario de la máquina podría leerla en el listado de procesos.
+    tryExec(`mysql -h ${host} -u ${user} < base.sql`, 'Import base.sql', { MYSQL_PWD: pass });
+  } catch {
+    console.log('MySQL CLI not found in PATH; skipping DB init.');
+  }
 }
 
 console.log('\nPostinstall completed.');

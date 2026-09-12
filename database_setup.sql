@@ -14,7 +14,12 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_usuario (usuario)
 );
 
--- Usuario de ejemplo (opcional, solo pruebas) - contrasena 'password123' con bcrypt
-INSERT INTO users (usuario, email, contraseña) VALUES
-('admin', 'admin@test.com', '$2a$10$7wVHb.Td.lSkTnhyOr2MO.P1J.k3c.kJH8FzmeXWjR5mQk3vld4X.')
-ON DUPLICATE KEY UPDATE usuario = VALUES(usuario);
+-- NO se crea ningun usuario de ejemplo. Antes este script insertaba 'admin@test.com'
+-- con un hash bcrypt visible en el repositorio, es decir, una cuenta con contrasena
+-- conocida por cualquiera que leyera el codigo. Si ese INSERT llego a ejecutarse
+-- alguna vez contra la base de datos de produccion, hay que borrar la cuenta:
+--
+--   SELECT id, usuario, email FROM users WHERE email = 'admin@test.com';
+--   DELETE FROM users WHERE email = 'admin@test.com';
+--
+-- Para crear usuarios, usar el registro de la aplicacion.

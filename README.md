@@ -88,10 +88,12 @@ El código lee las variables del entorno del proceso (no usa `dotenv`). Para des
 |---|---|---|
 | `DB_HOST` | `localhost` | Host de MySQL |
 | `DB_USER` | `root` | Usuario de MySQL |
-| `DB_PASS` | `21617` | Contraseña de MySQL |
+| `DB_PASS` | *(sin valor)* | Contraseña de MySQL. **Obligatoria**: no hay valor por defecto. |
 | `DB_PORT` | `3306` | Puerto de MySQL (con `parseInt` para evitar errores) |
 | `DB_NAME` | `usuarios` | Nombre de la base de datos |
 | `PORT` | `3000` | Puerto del servidor Node (Render lo asigna) |
+| `OPS_TOKEN` | *(sin valor)* | Token de `/api/ops/stats`. En producción, sin él el endpoint responde 404. |
+| `DATA_DIR` | *(carpeta del backend)* | Dónde se guardan imágenes y modelos de usuario. Sin definir, el disco es **efímero** en Render. |
 | `JWT_SECRET` | `secret` | Secreto para firmar tokens (en producción: obligatorio, ≥32 caracteres, el server aborta si no) |
 | `JWT_EXPIRES` | `24h` | Duración del token (renovable con `/api/auth/refresh`) |
 | `USER_ID` | `1` | Usuario por defecto para el reconocimiento |

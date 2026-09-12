@@ -20,6 +20,10 @@ const sensitiveLimiter = rateLimit({ windowMs: 60000, max: 20 });
 
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
+// Hash de una contraseña que nadie usa; solo sirve para gastar el mismo tiempo de
+// bcrypt cuando el correo no existe (ver el login).
+const HASH_SENUELO = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10);
+
 function signToken(userId, ver) {
     return new Promise((resolve, reject) => {
         jwt.sign({ user: { id: userId }, ver }, secret, { expiresIn }, (err, token) => {
@@ -55,6 +59,11 @@ router.post(
             if (user) {
                 const isMatch = await bcrypt.compare(req.body.password, user.contraseña);
                 if (!isMatch) user = null;
+            } else {
+                // Comparación señuelo: sin esto el login respondía mucho más rápido
+                // cuando el correo NO existía, y ese hueco de tiempo permitía
+                // averiguar qué cuentas están registradas pese al mensaje genérico.
+                await bcrypt.compare(req.body.password || '', HASH_SENUELO);
             }
 
             // Mensaje genérico: no revela si el correo existe (evita enumeración de usuarios)
