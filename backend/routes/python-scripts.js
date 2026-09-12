@@ -7,6 +7,7 @@ const axios = require('axios');
 const FLASK_REC_URL = process.env.FLASK_REC_URL || 'http://127.0.0.1:5000'; // 127.0.0.1 evita que Node use IPv6 (::1) y no encuentre a Flask
 const FLASK_CAPTURE_URL = process.env.FLASK_CAPTURE_URL || 'http://127.0.0.1:5001';
 const auth = require('../middleware/auth');
+const paths = require('../config/paths');
 const rateLimit = require('../middleware/rateLimit');
 
 // Todas las rutas de este router exigen un token JWT válido.
@@ -40,8 +41,7 @@ router.get('/count-images', (req, res) => {
     const userId = uidDe(req);
 
     try {
-        const backendDir = path.join(__dirname, '..');
-        const usuarioDir = path.join(backendDir, 'usuarios-entrenamientos', userId);
+        const usuarioDir = paths.userTrainingDir(userId);
 
         let totalImages = 0;
 
@@ -69,7 +69,9 @@ router.get('/count-images', (req, res) => {
             totalImages = countFilesInDir(usuarioDir);
         }
 
-        res.json({ success: true, total: totalImages });
+        // `persistente:false` avisa al frontend de que el disco es efímero y de que
+        // estas imágenes se perderán en el próximo reinicio del contenedor.
+        res.json({ success: true, total: totalImages, persistente: paths.persistent });
     } catch (error) {
         console.error('Error counting images:', error.message);
         res.status(500).json({ success: false, message: 'Failed to count images.' });
@@ -231,7 +233,14 @@ router.post('/train-model', (req, res) => {
         if (code === 0) {
             return res.json({ success: true, message: 'Model trained successfully.', output });
         }
-        return res.status(500).json({ success: false, message: 'Training failed.', error: errorOutput });
+        // Solo la última línea del error: el traceback completo de Python filtraba
+        // rutas absolutas del servidor a cualquier usuario autenticado.
+        const ultimaLinea = errorOutput.trim().split('\n').pop() || '';
+        return res.status(500).json({
+            success: false,
+            message: 'No se pudo entrenar el modelo.',
+            error: ultimaLinea.slice(0, 300)
+        });
     });
 });
 
@@ -345,8 +354,7 @@ router.get('/health', async (req, res) => {
 router.get('/debug/list-captured-images', (req, res) => {
     const userId = uidDe(req);
 
-    const backendDir = path.join(__dirname, '..');
-    const userDir = path.join(backendDir, 'usuarios-entrenamientos', userId);
+    const userDir = paths.userTrainingDir(userId);
 
     if (!fs.existsSync(userDir)) {
         return res.json({

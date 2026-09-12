@@ -23,6 +23,7 @@ import numpy as np
 from flask import Flask, request
 
 from gestos_utils import vector_normalizado_coords
+from rutas import dir_modelo, MODELO_BASE_DIR
 from inferencia_tflite import cargar_modelo_tflite, predecir_tflite, convertir_h5_a_tflite
 
 app = Flask(__name__)
@@ -32,9 +33,6 @@ MOVEMENT_THRESHOLD = 0.02
 
 # Usuario por defecto: solo para precargar un modelo al arrancar (warm-up)
 DEFAULT_USER_ID = os.getenv("USER_ID", "1")
-
-base_dir = os.path.dirname(__file__)
-backend_dir = os.path.dirname(base_dir)
 
 # ---------------------------------------------------------------------------
 # Cachés acotadas
@@ -54,10 +52,9 @@ def _resolver_rutas(model_user):
     Prueba primero el directorio del propio usuario y, si no tiene modelo, recurre al
     modelo base compartido.
     """
-    dirs_a_probar = [os.path.join(backend_dir, "modelos", str(model_user))]
-    modelo_base_dir = os.path.join(backend_dir, "modelos", "base")
-    if os.path.isdir(modelo_base_dir):
-        dirs_a_probar.append(modelo_base_dir)
+    dirs_a_probar = [dir_modelo(model_user)]
+    if os.path.isdir(MODELO_BASE_DIR) and MODELO_BASE_DIR not in dirs_a_probar:
+        dirs_a_probar.append(MODELO_BASE_DIR)
 
     for model_dir in dirs_a_probar:
         # El reconocimiento usa .tflite (ligero); si no existe, se convierte el .h5.
@@ -171,7 +168,8 @@ def _sesion(user_id, crear=True):
             return s
         if not crear:
             return None
-        s = {"model_key": None, "last_gesture": None, "last_time": 0.0, "prev": None, "counter": 0}
+        s = {"model_key": None, "model_user": None, "last_gesture": None,
+             "last_time": 0.0, "prev": None, "counter": 0}
         _sesiones[user_id] = s
         while len(_sesiones) > SESIONES_MAX:
             _sesiones.popitem(last=False)
@@ -214,6 +212,9 @@ def load_model_endpoint():
         s = _sesion(str(user_id))
         # Cambiar de modelo reinicia el antirrebote y el último gesto de esa sesión.
         s["model_key"] = model_key
+        # Se recuerda la ELECCIÓN además de la ruta: si el modelo se expulsa de la caché
+        # hay que recargar el que el usuario eligió, no el suyo propio por defecto.
+        s["model_user"] = str(model_user)
         s["last_gesture"] = None
         s["last_time"] = 0.0
         s["prev"] = None
@@ -264,13 +265,16 @@ def predecir():
     s = _sesion(user_id)
     entrada = _entrada_de_sesion(s)
     if entrada is None:
-        # Sin sesión previa (o el modelo fue expulsado de la caché): se vincula al vuelo
-        # al modelo propio del usuario, con respaldo al base.
+        # Sin sesión previa, o el modelo fue expulsado de la caché: se recarga la
+        # elección que hizo el usuario ('base' o su propio modelo). Sin sesión previa,
+        # su modelo propio, con respaldo al base.
+        eleccion = s["model_user"] or user_id
         try:
-            model_key, entrada = obtener_modelo(user_id)
+            model_key, entrada = obtener_modelo(eleccion)
         except FileNotFoundError as e:
             return {"success": False, "message": str(e)}, 404
         s["model_key"] = model_key
+        s["model_user"] = str(eleccion)
 
     vector_modelo = vector_normalizado_coords(puntos)
     crudo = [v for p in puntos for v in p]

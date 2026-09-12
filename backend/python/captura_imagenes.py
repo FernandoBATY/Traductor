@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import sys
 
 import cv2
@@ -14,11 +15,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 app = Flask(__name__)
 CORS(app)
 
-# Base directory for storing user-specific training data
-base_dir = os.path.dirname(__file__)
-backend_dir = os.path.dirname(base_dir)
-usuarios_entrenamientos_dir = os.path.join(backend_dir, "usuarios-entrenamientos")
-os.makedirs(usuarios_entrenamientos_dir, exist_ok=True)
+# Base directory for storing user-specific training data (ver rutas.py / DATA_DIR)
+from rutas import ENTRENAMIENTOS_DIR, asegurar_directorios
+
+usuarios_entrenamientos_dir = ENTRENAMIENTOS_DIR
+asegurar_directorios()
 
 
 @app.route('/capture_image', methods=['POST'])
@@ -33,6 +34,13 @@ def capture_image():
     if not letter:
         print("Error: Missing letter parameter.")
         return "Letter is required.", 400
+
+    # Validación estricta: estos valores acaban en una ruta de disco, y sin
+    # comprobarlos un "../.." permitiría escribir fuera del directorio de datos.
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", user_id):
+        return {"success": False, "message": "userId inválido."}, 400
+    if not re.fullmatch(r"[A-Za-z]", letter):
+        return {"success": False, "message": "letter debe ser una letra."}, 400
 
     # Create user-specific directory structure in usuarios-entrenamientos
     user_dir = os.path.join(usuarios_entrenamientos_dir, user_id)

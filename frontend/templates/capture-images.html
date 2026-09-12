@@ -171,6 +171,11 @@
                                 <span class="text-xs text-[#499c65] dark:text-primary/70 font-medium">LETRA: <span id="currentLetterSmall">-</span></span>
                             </div>
                         </div>
+                        <p id="avisoAlmacenamiento" class="hidden w-full text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 rounded-xl px-3 py-2">
+                            <span class="material-symbols-outlined text-sm align-middle">warning</span>
+                            El servidor guarda estas imágenes en almacenamiento temporal: se borrarán
+                            cuando el servicio se reinicie. Entrena tu modelo en la misma sesión.
+                        </p>
                         <button onclick="captureImage()" class="flex-1 h-14 bg-primary hover:bg-[#0bc148] text-[#0d1c12] font-black text-lg rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 px-8">
                             <span class="material-symbols-outlined">add_a_photo</span>
                             CAPTURAR GESTO
@@ -282,6 +287,8 @@
 
         // Start the capture service and set up video feed
         document.addEventListener('DOMContentLoaded', () => {
+            // Redirige al login si no hay token y programa la renovación periódica.
+            if (!requireAuth()) return;
             checkAuth();
             updateThemeIcon();
             if (!userId) {
@@ -476,9 +483,9 @@
                     showNotification('Error al generar la imagen.');
                     return;
                 }
-                fetch(`/api/python/capture-image?userId=${userId}&letter=${letter}`, {
+                fetchAuth(`/api/python/capture-image?letter=${letter}`, {
                     method: 'POST',
-                    headers: authHeaders(),
+                    headers: {},
                     body: blob
                 })
                 .then(response => response.json())
@@ -491,6 +498,7 @@
                     }
                 })
                 .catch(error => {
+                    if (error.sesionExpirada) return;
                     console.error('Error al capturar la imagen:', error);
                     showNotification('Ocurrió un error al capturar la imagen.');
                 });
@@ -500,13 +508,18 @@
         function updateCaptureCounter() {
             const userId = localStorage.getItem('userId');
             // Make a request to count captured images
-            fetch(`/api/python/count-images?userId=${userId}`, { headers: authHeaders() })
+            fetchAuth('/api/python/count-images')
                 .then(response => response.json())
                 .then(data => {
-                    const totalCount = data.total || 0;
-                    document.getElementById('counterValue').textContent = totalCount;
+                    document.getElementById('counterValue').textContent = data.total || 0;
+                    // El backend indica si el disco es persistente; si no, se avisa.
+                    const aviso = document.getElementById('avisoAlmacenamiento');
+                    if (aviso) aviso.classList.toggle('hidden', data.persistente !== false);
                 })
-                .catch(error => console.warn('Could not update counter:', error));
+                .catch(error => {
+                    if (error.sesionExpirada) return;
+                    console.warn('Could not update counter:', error);
+                });
         }
 
         function trainModel() {
@@ -517,10 +530,7 @@
 
             showNotification('Entrenando modelo... esto puede tomar unos minutos.');
 
-            fetch(`/api/python/train-model?userId=${userId}`, {
-                method: 'POST',
-                headers: authHeaders()
-            })
+            fetchAuth('/api/python/train-model', { method: 'POST' })
                 .then(response => {
                     // Handle both 200 and 500 responses
                     return response.json().then(data => ({
@@ -538,6 +548,7 @@
                     }
                 })
                 .catch(error => {
+                    if (error.sesionExpirada) return;
                     console.error('Error al entrenar el modelo:', error);
                     showNotification('Ocurrió un error al entrenar el modelo: ' + error.message);
                 });

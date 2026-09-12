@@ -20,11 +20,10 @@ if len(sys.argv) < 2:
 user_id = sys.argv[1]
 
 # Directory for gesture images and user-specific model paths
-base_dir = os.path.dirname(__file__)
-backend_dir = os.path.dirname(base_dir)
-usuarios_entrenamientos_dir = os.path.join(backend_dir, "usuarios-entrenamientos")
-user_training_dir = os.path.join(usuarios_entrenamientos_dir, user_id)
-modelo_dir = os.path.join(backend_dir, "modelos", user_id)
+from rutas import dir_entrenamiento, dir_modelo
+
+user_training_dir = dir_entrenamiento(user_id)
+modelo_dir = dir_modelo(user_id)
 modelo_path = os.path.join(modelo_dir, f"{user_id}_modelo_gestos.h5")
 mapa_etiquetas_path = os.path.join(modelo_dir, f"{user_id}_mapa_etiquetas.npy")
 

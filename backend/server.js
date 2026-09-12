@@ -124,16 +124,24 @@ app.get('/api/ops/stats', (req, res) => {
     });
 });
 
-// Proxy requests to /api/health to the Flask server
+// Proxy requests to /api/health to the Flask server.
+// http-proxy notifica los fallos por EVENTO, no lanzando: sin este listener un
+// ECONNREFUSED (Flask aún arrancando) emitía un 'error' sin escuchadores y eso
+// tumbaba el proceso Node entero, justo en los ~30 s de cada arranque en frío.
 const proxy = httpProxy.createProxyServer();
 
-app.get('/api/health', async (req, res) => {
-    try {
-        proxy.web(req, res, { target: `${FLASK_REC_URL}/health` }); // Ensure correct target
-    } catch (error) {
-        console.error('Error proxying health check:', error.message);
-        res.status(500).send('Error proxying health check.');
+proxy.on('error', (err, req, res) => {
+    logError('[proxy] fallo hablando con Flask', { message: err.message });
+    if (res && !res.headersSent && typeof res.writeHead === 'function') {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'unhealthy', service: 'reconocimiento' }));
+    } else if (res && typeof res.end === 'function') {
+        res.end();
     }
+});
+
+app.get('/api/health', (req, res) => {
+    proxy.web(req, res, { target: `${FLASK_REC_URL}/health` });
 });
 
 // Auto-start Python services (capture and recognition) without grabbing camera until requested
@@ -162,21 +170,35 @@ function startPythonService(scriptPath, env = {}) {
 // En despliegue (URLs externas configuradas) los servicios Python corren aparte.
 const pythonServicesExternos = !!(process.env.FLASK_REC_URL || process.env.FLASK_CAPTURE_URL);
 if (pythonServicesExternos) {
-    console.log('Servicios Python externos configurados, no se propagan procesos locales.');
+    info('python-servicios-externos', { msg: 'no se lanzan procesos locales' });
 } else {
     capturaProc = startPythonService(capturaImagenesPath, { FLASK_CAPTURE_PORT: '5001' });
     reconocimientoProc = startPythonService(reconocimientoPath, { USER_ID: '1', FLASK_REC_PORT: '5000' });
 }
 
-async function gracefulShutdown() {
+// Síncrono a propósito: 'exit' no espera a nada asíncrono, así que la versión
+// `async` anterior no llegaba a matar los procesos Python al salir.
+function gracefulShutdown() {
     console.log('Shutting down: stopping Python services...');
     try { capturaProc && capturaProc.kill(); } catch {}
     try { reconocimientoProc && reconocimientoProc.kill(); } catch {}
 }
 
-process.on('SIGINT', async () => { await gracefulShutdown(); process.exit(0); });
-process.on('SIGTERM', async () => { await gracefulShutdown(); process.exit(0); });
-process.on('exit', async () => { await gracefulShutdown(); });
+process.on('SIGINT', () => { gracefulShutdown(); process.exit(0); });
+process.on('SIGTERM', () => { gracefulShutdown(); process.exit(0); });
+process.on('exit', gracefulShutdown);
+
+// Sin estos manejadores, cualquier promesa rechazada sin capturar tumbaba el
+// servidor sin dejar rastro en los logs de Render.
+process.on('unhandledRejection', (reason) => {
+    logError('unhandledRejection', { message: reason && reason.message ? reason.message : String(reason) });
+});
+process.on('uncaughtException', (err) => {
+    logError('uncaughtException', { message: err.message, stack: err.stack });
+    // Estado ya no fiable: se cierra ordenadamente y Render levanta una instancia nueva.
+    gracefulShutdown();
+    process.exit(1);
+});
 
 // Ruta para servir el archivo "index.html" por defecto
 app.get('/', (req, res) => {
@@ -190,7 +212,32 @@ app.get('/:page', (req, res) => {
     if (!/^[A-Za-z0-9_-]+\.html$/.test(page)) {
         return res.status(400).send('Invalid page.');
     }
-    res.sendFile(path.join(__dirname, '../frontend/templates', page));
+    res.sendFile(path.join(__dirname, '../frontend/templates', page), (err) => {
+        if (err) res.status(404).send('Page not found.');
+    });
+});
+
+// 404 para todo lo que no casó con ninguna ruta.
+app.use((req, res) => {
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ msg: 'Recurso no encontrado' });
+    }
+    res.status(404).send('Not found.');
+});
+
+// Manejador de errores final: sin esto Express respondía con el stack completo
+// (rutas del servidor incluidas) y algunos fallos quedaban sin registrar.
+app.use((err, req, res, next) => {
+    logError('[express] error no controlado', {
+        message: err.message,
+        path: req.originalUrl,
+        method: req.method
+    });
+    if (res.headersSent) return next(err);
+    if (req.path.startsWith('/api/')) {
+        return res.status(500).json({ msg: 'Error en el servidor' });
+    }
+    res.status(500).send('Error en el servidor.');
 });
 
 const PORT = process.env.PORT || 3000;
@@ -199,6 +246,5 @@ const PORT = process.env.PORT || 3000;
 healthMonitor.start(30000);
 
 app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
-    console.log(`Open http://localhost:${PORT} to view the project.`);
+    info('server-started', { port: PORT, env: process.env.NODE_ENV || 'development' });
 });

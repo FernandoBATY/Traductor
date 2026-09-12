@@ -3,12 +3,12 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const path = require('path');
 const fs = require('fs');
 const { check, validationResult } = require('express-validator');
 const User = require('../models/User');
 const PasswordReset = require('../models/PasswordReset');
 const rateLimit = require('../middleware/rateLimit');
+const paths = require('../config/paths');
 const auth = require('../middleware/auth');
 const { secret, expiresIn } = require('../config/jwt');
 const { sendPasswordReset, mailerConfigured } = require('../utils/mailer');
@@ -167,8 +167,10 @@ router.post(
             await User.updatePassword(req.userId, hashedPassword);
             await User.bumpTokenVersion(req.userId);
 
-            // Token nuevo firmado con la versión incrementada (revoca los antiguos)
-            const newVer = user.token_version + 1;
+            // Token nuevo firmado con la versión REAL leída tras incrementarla.
+            // Calcularla en local (token_version + 1) producía un token ya inválido si
+            // otra petición del mismo usuario revocaba sesiones al mismo tiempo.
+            const newVer = await User.getTokenVersion(req.userId);
             const token = await signToken(req.userId, newVer);
             const publicUser = await User.getPublicById(req.userId);
 
@@ -237,13 +239,11 @@ router.delete(
             }
 
             // Borrar datos de entrenamiento y modelos del usuario del disco
-            const backendDir = path.join(__dirname, '..');
-            for (const rel of [`usuarios-entrenamientos/${req.userId}`, `modelos/${req.userId}`]) {
-                const target = path.join(backendDir, rel);
+            for (const target of [paths.userTrainingDir(req.userId), paths.userModelDir(req.userId)]) {
                 try {
                     fs.rmSync(target, { recursive: true, force: true });
                 } catch (e) {
-                    logError(`[account] no se pudo borrar ${rel}`, { message: e.message });
+                    logError('[account] no se pudieron borrar los datos del usuario', { message: e.message });
                 }
             }
 

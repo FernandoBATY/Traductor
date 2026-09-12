@@ -286,11 +286,13 @@ function detectLoop() {
                 drawLandmarks(coords);
                 if (ahora - lastPredict > PREDICT_INTERVAL) {
                     lastPredict = ahora;
-                    fetch('/api/python/predecir', {
+                    fetchAuth('/api/python/predecir', {
                         method: 'POST',
-                        headers: authHeaders({ 'Content-Type': 'application/json' }),
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ coords })
-                    }).catch(() => {});
+                    })
+                        .then(r => { servicioCaido(r.status === 503); })
+                        .catch(err => { if (err.sesionExpirada) detenerTodo(); });
                 }
             } else {
                 drawLandmarks(null);
@@ -318,11 +320,19 @@ function updateModelToggle() {
     baseBtn.className = modelChoice === 'base' ? active : inactive;
 }
 
-function loadModel() {
+// Tras un arranque en frío de Render, los servicios Python tardan ~30 s en responder.
+// Se reintenta con espera creciente en vez de rendirse al primer 503.
+function loadModel(intento = 0) {
     if (!userId) return Promise.resolve();
-    return fetch(`/api/python/load-model?userId=${userId}&model=${modelChoice}`, { method: 'POST', headers: authHeaders() })
-        .then(r => r.json())
-        .then(data => {
+    return fetchAuth(`/api/python/load-model?model=${modelChoice}`, { method: 'POST' })
+        .then(r => r.json().then(data => ({ status: r.status, data })))
+        .then(({ status, data }) => {
+            if (status === 503 && intento < 6) {
+                if (intento === 0) showNotification('Iniciando el servicio de reconocimiento...');
+                servicioCaido(true);
+                return new Promise(resolve => setTimeout(resolve, 5000)).then(() => loadModel(intento + 1));
+            }
+            servicioCaido(!data.success);
             if (data.success) {
                 showNotification(data.modelLoaded
                     ? 'Modelo listo para reconocer.'
@@ -332,7 +342,27 @@ function loadModel() {
             }
             return data;
         })
-        .catch(() => showNotification('No se pudo cargar el modelo.'));
+        .catch(err => {
+            if (err.sesionExpirada) return;
+            if (intento < 6) {
+                return new Promise(resolve => setTimeout(resolve, 5000)).then(() => loadModel(intento + 1));
+            }
+            showNotification('No se pudo cargar el modelo.');
+        });
+}
+
+// Aviso persistente mientras el backend de reconocimiento no responda, para que la
+// pantalla no se quede en '-' sin explicación.
+function servicioCaido(caido) {
+    const el = document.getElementById('gestureDisplay');
+    if (!el) return;
+    if (caido) el.textContent = 'Servicio no disponible';
+    else if (el.textContent === 'Servicio no disponible') el.textContent = '-';
+}
+
+function detenerTodo() {
+    detectionLoopRunning = false;
+    stopGesturePolling();
 }
 
 function applyCameraAspect() {
@@ -450,6 +480,9 @@ function stopCamera() {
 
         // Initialize MediaPipe, modelo y cámara del navegador
         document.addEventListener('DOMContentLoaded', () => {
+            // Redirige al login si no hay token y programa la renovación periódica.
+            // Sin esto el token caducaba y todas las llamadas devolvían 401 en silencio.
+            if (!requireAuth()) return;
             checkAuth();
             updateThemeIcon();
             updateModelToggle();
@@ -468,18 +501,19 @@ function stopCamera() {
             const gestureDisplay = document.getElementById('gestureDisplay');
             
             gestureCheckInterval = setInterval(() => {
-                fetch('/api/python/last-gesture', { headers: authHeaders() })
+                fetchAuth('/api/python/last-gesture')
                     .then(response => response.json())
                     .then(data => {
                         if (data.gesture) {
-                            // Update the gesture display
                             gestureDisplay.textContent = 'LETRA: ' + data.gesture;
-                        } else {
-                            // No gesture detected
+                        } else if (gestureDisplay.textContent !== 'Servicio no disponible') {
                             gestureDisplay.textContent = '-';
                         }
                     })
-                    .catch(err => console.warn('Error fetching gesture:', err));
+                    .catch(err => {
+                        if (err.sesionExpirada) { detenerTodo(); return; }
+                        console.warn('Error fetching gesture:', err);
+                    });
             }, 300); // Poll every 300ms
         }
         

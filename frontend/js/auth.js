@@ -91,11 +91,38 @@ async function serverLogout() {
     clearSession();
 }
 
+// Se avisa UNA sola vez aunque lleguen muchos 401 seguidos (el bucle de detección
+// dispara varias peticiones por segundo).
+let sesionExpiradaAvisada = false;
+
 function mostrarSesionExpirada() {
+    if (sesionExpiradaAvisada) return;
+    sesionExpiradaAvisada = true;
+    clearSession();
     if (window.showCustomAlert) {
         showCustomAlert('Tu sesión expiró o fue revocada. Inicia sesión de nuevo.', 'warning');
     }
-    window.location.href = 'inicio-sesion.html';
+    // Margen para que el aviso se llegue a leer antes de redirigir.
+    setTimeout(() => { window.location.href = 'inicio-sesion.html'; }, 1500);
+}
+
+// fetch autenticado que detecta la sesión caducada EN UN SOLO SITIO.
+//
+// Antes cada página comprobaba solo `localStorage` al cargar y luego ignoraba los 401:
+// un `fetch` con respuesta 401 no rechaza la promesa, así que los `.catch()` no se
+// enteraban y la interfaz se quedaba en blanco indefinidamente (el reconocimiento
+// mostraba '-' para siempre) sin decirle al usuario que tenía que volver a entrar.
+async function fetchAuth(url, options) {
+    const opts = Object.assign({}, options || {});
+    opts.headers = authHeaders(opts.headers);
+    const response = await fetch(url, opts);
+    if (response.status === 401) {
+        mostrarSesionExpirada();
+        const err = new Error('Sesión expirada');
+        err.sesionExpirada = true;
+        throw err;
+    }
+    return response;
 }
 
 // Para páginas protegidas: reenvía a login si no hay token

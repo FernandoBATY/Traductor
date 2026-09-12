@@ -4,6 +4,12 @@ services:
     runtime: docker
     plan: free
     dockerfilePath: Dockerfile
+    # Disco persistente para las imágenes capturadas y los modelos entrenados.
+    # Descomentar junto con DATA_DIR (requiere plan de pago).
+    # disks:
+    #   - name: datos-usuarios
+    #     mountPath: /var/data
+    #     sizeGB: 1
     envVars:
       # MySQL (Aiven) - configurar credenciales en el panel de Render
       - key: DB_HOST
@@ -31,6 +37,14 @@ services:
       # Default user
       - key: USER_ID
         value: "2"
+      # Almacenamiento de imágenes y modelos de usuario.
+      # SIN esta variable los datos viven en el disco del contenedor, que Render borra
+      # en cada reinicio o despliegue: el usuario pierde sus capturas y su modelo.
+      # Para conservarlos hay que descomentar el bloque `disks` de abajo (requiere plan
+      # de pago; los discos no están disponibles en el plan free) y dejar DATA_DIR
+      # apuntando al mountPath.
+      # - key: DATA_DIR
+      #   value: /var/data
       # URL pública (enlaces de recuperación de contraseña)
       - key: APP_URL
         value: https://traductor-backend-hrdf.onrender.com
