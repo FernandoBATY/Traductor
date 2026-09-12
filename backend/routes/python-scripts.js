@@ -168,7 +168,21 @@ router.get('/start-capture', async (req, res) => {
 const TRAIN_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
 let trainingUserId = null;
 
+// Entrenamiento DESACTIVADO temporalmente: aun con el turno único, una sola ejecución
+// de TensorFlow puede agotar los 512 MB de la instancia y el OOM tumba el contenedor
+// entero (Node incluido). Queda en mantenimiento hasta moverlo a una tarea en segundo
+// plano o al navegador. Para reactivarlo: TRAINING_ENABLED=true.
+const TRAINING_ENABLED = process.env.TRAINING_ENABLED === 'true';
+
 router.post('/train-model', (req, res) => {
+    if (!TRAINING_ENABLED) {
+        return res.status(503).json({
+            success: false,
+            mantenimiento: true,
+            message: 'El entrenamiento está en mantenimiento. Mientras tanto puedes usar el modelo base.'
+        });
+    }
+
     const userId = uidDe(req);
 
     if (trainingUserId !== null) {

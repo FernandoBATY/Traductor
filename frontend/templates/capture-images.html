@@ -220,9 +220,10 @@
                 REGRESAR
             </button>
             <div class="flex">
-                <button onclick="trainModel()" class="w-full px-8 py-3 rounded-xl bg-primary text-[#0d1c12] font-black hover:bg-[#0bc148] transition-all shadow-lg flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined">model_training</span>
-                    ENTRENAR MODELO
+                <!-- Entrenamiento en mantenimiento (ver TRAINING_ENABLED en backend/routes/python-scripts.js) -->
+                <button onclick="trainModel()" title="El entrenamiento está en mantenimiento" class="w-full px-8 py-3 rounded-xl bg-gray-300 dark:bg-white/10 text-gray-600 dark:text-gray-400 font-black cursor-not-allowed flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">construction</span>
+                    ENTRENAMIENTO EN MANTENIMIENTO
                 </button>
             </div>
         </div>
@@ -522,7 +523,15 @@
                 });
         }
 
+        // Entrenamiento en mantenimiento: el servidor también lo rechaza (503).
+        // Para reactivarlo, poner a true junto con TRAINING_ENABLED=true en el backend.
+        const ENTRENAMIENTO_DISPONIBLE = false;
+
         function trainModel() {
+            if (!ENTRENAMIENTO_DISPONIBLE) {
+                showNotification('El entrenamiento está en mantenimiento. Mientras tanto puedes usar el modelo base.');
+                return;
+            }
             if (!userId) {
                 showNotification('ID de usuario no encontrado. Por favor, inicie sesión de nuevo.');
                 return;
