@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { spawn, exec } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
@@ -16,13 +16,16 @@ router.use(auth);
 // Tocho por IP en todo /api/python (autenticado) para acotar abusos/DoS.
 router.use(rateLimit({ windowMs: 60000, max: 600 }));
 
+// El id del token es numérico; path.join y las URLs necesitan cadena.
+const uidDe = (req) => String(req.userId);
+
 // ============ Diagnostic Routes ============
 
 // Check status of all services
 router.get('/status', async (req, res) => {
     const capturaHealthy = await checkCapturaHealth().catch(() => false);
     const reconocimientoHealthy = await checkReconocimientoHealth().catch(() => false);
-    
+
     res.json({
         captura: capturaHealthy ? 'healthy' : 'unavailable',
         reconocimiento: reconocimientoHealthy ? 'healthy' : 'unavailable',
@@ -30,42 +33,18 @@ router.get('/status', async (req, res) => {
     });
 });
 
-// Stop a Flask service (captura or reconocimiento)
-router.post('/stop-service', (req, res) => {
-    const service = req.query.service; // 'captura' or 'reconocimiento'
-    
-    if (!service || !['captura', 'reconocimiento'].includes(service)) {
-        return res.status(400).json({ success: false, message: 'service parameter must be "captura" or "reconocimiento".' });
-    }
-
-    const processName = service === 'captura' ? 'captura_imagenes' : 'reconocimiento';
-    const cmd = process.platform === 'win32'
-        ? `taskkill /FI "COMMANDLINE eq *${processName}*" /IM python.exe /T /F`
-        : `pkill -f ${processName}`;
-
-    exec(cmd, (err, stdout) => {
-        if (err && !err.message.includes('not found')) {
-            console.log(`${service} service stop command executed.`);
-        }
-        res.json({ success: true, message: `${service} service stopped.` });
-    });
-});
-
 // ============ Captura de Imágenes Routes ============
 
 // Count images captured for a given userId
 router.get('/count-images', (req, res) => {
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(400).json({ success: false, message: 'userId is required.' });
-    }
+    const userId = uidDe(req);
 
     try {
         const backendDir = path.join(__dirname, '..');
         const usuarioDir = path.join(backendDir, 'usuarios-entrenamientos', userId);
-        
+
         let totalImages = 0;
-        
+
         if (fs.existsSync(usuarioDir)) {
             // Count all .jpg files in all subdirectories
             const countFilesInDir = (dir) => {
@@ -86,10 +65,10 @@ router.get('/count-images', (req, res) => {
                 }
                 return count;
             };
-            
+
             totalImages = countFilesInDir(usuarioDir);
         }
-        
+
         res.json({ success: true, total: totalImages });
     } catch (error) {
         console.error('Error counting images:', error.message);
@@ -100,11 +79,11 @@ router.get('/count-images', (req, res) => {
 // Capture a single image for a given letter and userId.
 // El navegador envía la imagen (JPEG binario) en el cuerpo de la petición.
 router.post('/capture-image', (req, res) => {
-    const userId = req.userId;
+    const userId = uidDe(req);
     const letter = req.query.letter;
 
-    if (!userId || !letter) {
-        return res.status(400).json({ success: false, message: 'userId and letter are required.' });
+    if (!letter) {
+        return res.status(400).json({ success: false, message: 'letter is required.' });
     }
 
     // Validación estricta de la letra (A-Z) + normalización
@@ -127,7 +106,11 @@ router.post('/capture-image', (req, res) => {
                 res.status(413).json({ success: false, message: 'Imagen demasiado grande.' });
             }
             chunks.length = 0;
-            req.pause();
+            // Descartar el resto del cuerpo sin quedarse a medias: `req.pause()` dejaba
+            // el socket colgado. Drenar (unpipe + resume) libera la conexión y permite
+            // que la respuesta 413 llegue completa al navegador.
+            req.unpipe();
+            req.resume();
             return;
         }
         chunks.push(chunk);
@@ -136,7 +119,8 @@ router.post('/capture-image', (req, res) => {
     req.on('end', () => {
         if (tooBig) return;
         const body = Buffer.concat(chunks);
-        axios.post(`${FLASK_CAPTURE_URL}/capture_image?userId=${userId}&letter=${normalizedLetter}`, body, {
+        const url = `${FLASK_CAPTURE_URL}/capture_image?userId=${encodeURIComponent(userId)}&letter=${normalizedLetter}`;
+        axios.post(url, body, {
             headers: { 'Content-Type': (req.headers['content-type'] || 'image/jpeg') }
         })
             .then(response => {
@@ -159,103 +143,64 @@ async function checkCapturaHealth() {
     }
 }
 
-// Start captura_imagenes.py Flask server
+// Estado del servicio de captura.
+// Los servicios Python los arranca el proceso servidor (backend/server.js) y son
+// COMPARTIDOS por todos los usuarios: esta ruta solo informa, nunca los mata ni los
+// relanza. Antes cualquier usuario autenticado podía ejecutar un pkill/taskkill que
+// tumbaba la captura y el reconocimiento de todos los demás.
 router.get('/start-capture', async (req, res) => {
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(400).send('userId query parameter is required.');
-    }
-
-    // First, check if service is already healthy
     if (await checkCapturaHealth()) {
-        console.log('captura_imagenes.py already running and responding.');
         return res.json({ success: true, message: 'captura_imagenes.py already running.' });
     }
-
-    // If not healthy, kill any existing processes and start fresh
-    const killCmd = process.platform === 'win32'
-        ? `taskkill /FI "COMMANDLINE eq *captura_imagenes*" /IM python.exe /T /F`
-        : `pkill -9 -f captura_imagenes`;
-
-    exec(killCmd, (killErr) => {
-        // Delay to ensure processes are killed
-        setTimeout(() => {
-            const scriptPath = path.join(__dirname, '../python/captura_imagenes.py');
-            
-            let hasResponded = false; // Track if response was sent
-            
-            const pythonProcess = spawn('python', [scriptPath], {
-                detached: true,
-                stdio: ['ignore', 'pipe', 'pipe'],
-                env: { ...process.env, USER_ID: userId }
-            });
-
-            pythonProcess.stdout.on('data', (data) => {
-                console.log(`captura_imagenes.py: ${data.toString().trim()}`);
-            });
-
-            pythonProcess.stderr.on('data', (data) => {
-                console.error(`captura_imagenes.py Error: ${data.toString().trim()}`);
-            });
-
-            pythonProcess.on('error', (err) => {
-                console.error('Failed to start captura_imagenes.py:', err.message);
-                if (!hasResponded) {
-                    hasResponded = true;
-                    res.status(500).json({ 
-                        success: false, 
-                        message: 'Failed to spawn captura_imagenes.py process.',
-                        error: err.message
-                    });
-                }
-            });
-
-            pythonProcess.unref();
-            
-            // Wait for service to be ready and then respond
-            let attempts = 0;
-                const maxAttempts = 30; // 30 * 500ms = 15 seconds
-            const checkInterval = setInterval(async () => {
-                attempts++;
-                if (await checkCapturaHealth()) {
-                    clearInterval(checkInterval);
-                    if (!hasResponded) {
-                        hasResponded = true;
-                        console.log('captura_imagenes.py started and ready on port 5001.');
-                        res.json({ success: true, message: 'captura_imagenes.py started on port 5001.' });
-                    }
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(checkInterval);
-                    if (!hasResponded) {
-                        hasResponded = true;
-                        console.error('Timeout waiting for captura_imagenes.py to be ready');
-                        res.status(500).json({ 
-                            success: false, 
-                            message: 'Failed to start captura_imagenes.py. Check Python dependencies.',
-                            hint: 'Ensure Python packages are installed: pip install -r requirements.txt'
-                        });
-                    }
-                }
-            }, 500);
-        }, 1000);
+    return res.status(503).json({
+        success: false,
+        message: 'El servicio de captura no está disponible. Inténtalo de nuevo en unos segundos.'
     });
 });
 
 // ============ Entrenamiento Routes ============
 
-// Train model for a given userId
+// El entrenamiento carga TensorFlow completo (cientos de MB) y satura la instancia.
+// Se admite UN entrenamiento a la vez en todo el proceso y con tiempo máximo, para que
+// una ráfaga de peticiones no provoque un OOM que se lleve por delante al servidor Node.
+const TRAIN_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
+let trainingUserId = null;
+
 router.post('/train-model', (req, res) => {
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(400).json({ success: false, message: 'userId is required.' });
+    const userId = uidDe(req);
+
+    if (trainingUserId !== null) {
+        const propio = trainingUserId === userId;
+        return res.status(429).json({
+            success: false,
+            message: propio
+                ? 'Ya hay un entrenamiento tuyo en curso. Espera a que termine.'
+                : 'Hay otro entrenamiento en curso. Vuelve a intentarlo en unos minutos.'
+        });
     }
+    trainingUserId = userId;
 
     const scriptPath = path.join(__dirname, '../python/entrenamiento.py');
-
     const pythonProcess = spawn('python', [scriptPath, userId]);
 
     let output = '';
     let errorOutput = '';
+    let finished = false;
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+        timedOut = true;
+        pythonProcess.kill('SIGKILL');
+    }, TRAIN_TIMEOUT_MS);
+
+    // Libera el turno pase lo que pase (éxito, error, timeout o fallo al lanzar python).
+    const release = () => {
+        if (finished) return false;
+        finished = true;
+        clearTimeout(timer);
+        trainingUserId = null;
+        return true;
+    };
 
     pythonProcess.stdout.on('data', (data) => {
         const msg = data.toString().trim();
@@ -269,12 +214,24 @@ router.post('/train-model', (req, res) => {
         errorOutput += msg + '\n';
     });
 
+    pythonProcess.on('error', (err) => {
+        console.error('Failed to start entrenamiento.py:', err.message);
+        if (!release()) return;
+        res.status(500).json({ success: false, message: 'No se pudo iniciar el entrenamiento.' });
+    });
+
     pythonProcess.on('close', (code) => {
-        if (code === 0) {
-            res.json({ success: true, message: 'Model trained successfully.', output });
-        } else {
-            res.status(500).json({ success: false, message: 'Training failed.', error: errorOutput });
+        if (!release()) return;
+        if (timedOut) {
+            return res.status(504).json({
+                success: false,
+                message: 'El entrenamiento tardó demasiado y se canceló. Prueba con menos imágenes.'
+            });
         }
+        if (code === 0) {
+            return res.json({ success: true, message: 'Model trained successfully.', output });
+        }
+        return res.status(500).json({ success: false, message: 'Training failed.', error: errorOutput });
     });
 });
 
@@ -290,101 +247,31 @@ async function checkReconocimientoHealth() {
     }
 }
 
-// Start reconocimiento.py Flask server
+// Estado del servicio de reconocimiento (compartido; ver nota en /start-capture).
 router.get('/start-recognition', async (req, res) => {
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(400).send('userId query parameter is required.');
-    }
-
-    // First, check if service is already healthy
     if (await checkReconocimientoHealth()) {
-        console.log('reconocimiento.py already running and responding.');
         return res.json({ success: true, message: 'reconocimiento.py already running.' });
     }
-
-    // If not healthy, kill any existing processes and start fresh
-    const killCmd = process.platform === 'win32'
-        ? `taskkill /FI "COMMANDLINE eq *reconocimiento*" /IM python.exe /T /F`
-        : `pkill -9 -f reconocimiento`;
-
-    exec(killCmd, (killErr) => {
-        // Delay to ensure processes are killed
-        setTimeout(() => {
-            const scriptPath = path.join(__dirname, '../python/reconocimiento.py');
-            
-            let hasResponded = false; // Track if response was sent
-            
-            const pythonProcess = spawn('python', [scriptPath], {
-                detached: true,
-                stdio: ['ignore', 'pipe', 'pipe'],
-                env: { ...process.env, USER_ID: userId }
-            });
-
-            pythonProcess.stdout.on('data', (data) => {
-                console.log(`reconocimiento.py: ${data.toString().trim()}`);
-            });
-
-            pythonProcess.stderr.on('data', (data) => {
-                console.error(`reconocimiento.py Error: ${data.toString().trim()}`);
-            });
-
-            pythonProcess.on('error', (err) => {
-                console.error('Failed to start reconocimiento.py:', err.message);
-                if (!hasResponded) {
-                    hasResponded = true;
-                    res.status(500).json({ 
-                        success: false, 
-                        message: 'Failed to spawn reconocimiento.py process.',
-                        error: err.message
-                    });
-                }
-            });
-
-            pythonProcess.unref();
-            
-            // Wait for service to be ready and then respond
-            let attempts = 0;
-                const maxAttempts = 30; // 30 * 500ms = 15 seconds
-            const checkInterval = setInterval(async () => {
-                attempts++;
-                if (await checkReconocimientoHealth()) {
-                    clearInterval(checkInterval);
-                    if (!hasResponded) {
-                        hasResponded = true;
-                        console.log('reconocimiento.py started and ready on port 5000.');
-                        res.json({ success: true, message: 'reconocimiento.py started on port 5000.' });
-                    }
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(checkInterval);
-                    if (!hasResponded) {
-                        hasResponded = true;
-                        console.error('Timeout waiting for reconocimiento.py to be ready');
-                        res.status(500).json({ 
-                            success: false, 
-                            message: 'Failed to start reconocimiento.py. Check model files and dependencies.',
-                            hint: 'Ensure model files exist in backend/modelos/<userId>/ and Python dependencies are installed.'
-                        });
-                    }
-                }
-            }, 500);
-        }, 1000);
+    return res.status(503).json({
+        success: false,
+        message: 'El servicio de reconocimiento no está disponible. Inténtalo de nuevo en unos segundos.'
     });
 });
 
-// Cargar modelo sin tocar cámara (modo navegador con getUserMedia)
+// Cargar modelo sin tocar cámara (modo navegador con getUserMedia).
+// La sesión de reconocimiento es POR USUARIO: se envía el userId del token como dueño
+// de la sesión y, aparte, qué modelo debe usar (el suyo o el base).
 router.post('/load-model', async (req, res) => {
     try {
-        const userId = req.userId;
+        const userId = uidDe(req);
         const model = (req.query.model || req.body.model || 'user').toString().toLowerCase();
-        if (!userId) {
-            return res.status(400).json({ success: false, message: 'userId parameter required' });
-        }
-
         const modelUser = model === 'base' ? 'base' : userId;
+
         try {
-            await axios.post(`${FLASK_REC_URL}/api/load-model?userId=${modelUser}`);
-            console.log(`Model loaded for user ${modelUser} (seleccion: ${model})`);
+            await axios.post(
+                `${FLASK_REC_URL}/api/load-model?userId=${encodeURIComponent(userId)}&modelUser=${encodeURIComponent(modelUser)}`
+            );
+            console.log(`Model loaded for user ${userId} (seleccion: ${model})`);
             return res.json({ success: true, modelLoaded: true, message: `Modelo listo (${model === 'base' ? 'base' : 'personalizado'}).` });
         } catch (loadError) {
             if (loadError.response && loadError.response.status === 404) {
@@ -396,7 +283,7 @@ router.post('/load-model', async (req, res) => {
                 });
             }
             // Error real (servicio caído o fallo interno): se reporta para que el front muestre el problema
-            console.error(`Error cargando modelo para ${modelUser}:`, loadError.response?.data || loadError.message);
+            console.error(`Error cargando modelo para ${userId}:`, loadError.response?.data || loadError.message);
             return res.status(503).json({
                 success: false,
                 message: 'El servicio de reconocimiento no pudo cargar el modelo.'
@@ -411,11 +298,16 @@ router.post('/load-model', async (req, res) => {
 // Predict a letter from 21 landmarks {x,y,z} sent by the browser
 router.post('/predecir', async (req, res) => {
     try {
+        const userId = uidDe(req);
         const body = req.body;
         if (!body || !Array.isArray(body.coords) || body.coords.length !== 21) {
             return res.status(400).json({ success: false, message: 'coords inválidas' });
         }
-        const r = await axios.post(`${FLASK_REC_URL}/api/predecir`, body, { timeout: 10000 });
+        const r = await axios.post(
+            `${FLASK_REC_URL}/api/predecir?userId=${encodeURIComponent(userId)}`,
+            { coords: body.coords },
+            { timeout: 10000 }
+        );
         res.json(r.data);
     } catch (e) {
         console.error('Error predicting:', e.message);
@@ -423,10 +315,14 @@ router.post('/predecir', async (req, res) => {
     }
 });
 
-// Get last detected gesture
+// Get last detected gesture (el del usuario del token, no el del último que pasara por aquí)
 router.get('/last-gesture', async (req, res) => {
     try {
-        const r = await axios.get(`${FLASK_REC_URL}/api/last-gesture`);
+        const userId = uidDe(req);
+        const r = await axios.get(
+            `${FLASK_REC_URL}/api/last-gesture?userId=${encodeURIComponent(userId)}`,
+            { timeout: 5000 }
+        );
         res.json(r.data);
     } catch (e) {
         console.error('Error getting last gesture:', e.message);
@@ -444,21 +340,18 @@ router.get('/health', async (req, res) => {
     }
 });
 
-// Diagnostic endpoint: List all captured images
+// Diagnostic endpoint: resumen de imágenes capturadas por el usuario.
+// No devuelve rutas absolutas del servidor (evita filtrar la estructura del contenedor).
 router.get('/debug/list-captured-images', (req, res) => {
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(400).json({ success: false, message: 'userId required' });
-    }
+    const userId = uidDe(req);
 
     const backendDir = path.join(__dirname, '..');
     const userDir = path.join(backendDir, 'usuarios-entrenamientos', userId);
 
     if (!fs.existsSync(userDir)) {
-        return res.json({ 
-            success: false, 
-            message: `User directory does not exist: ${userDir}`,
-            path: userDir,
+        return res.json({
+            success: false,
+            message: 'Todavía no has capturado imágenes.',
             exists: false
         });
     }
@@ -473,21 +366,20 @@ router.get('/debug/list-captured-images', (req, res) => {
                 const files = fs.readdirSync(letterDir).filter(f => f.endsWith('.jpg'));
                 result[letter] = {
                     count: files.length,
-                    files: files,
-                    path: letterDir
+                    files: files
                 };
             }
         });
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             userId: userId,
-            userDir: userDir,
             data: result,
             totalImages: Object.values(result).reduce((sum, obj) => sum + obj.count, 0)
         });
     } catch (e) {
-        res.status(500).json({ success: false, message: e.message, path: userDir });
+        console.error('Error listing captured images:', e.message);
+        res.status(500).json({ success: false, message: 'No se pudieron listar las imágenes.' });
     }
 });
 
